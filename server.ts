@@ -336,12 +336,18 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[BigData TP1 Workstation] Server running on port ${PORT} (NODE_ENV=${process.env.NODE_ENV || "development"})`);
-    console.log(`[MongoDB Status] ${isConnected ? "Connected to " + DB_NAME : "Waiting for connection (Fallback Active)"}`);
+  if (process.env.VERCEL !== "1") {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[BigData TP1 Workstation] Server running on port ${PORT} (NODE_ENV=${process.env.NODE_ENV || "development"})`);
+      console.log(`[MongoDB Status] ${isConnected ? "Connected to " + DB_NAME : "Waiting for connection (Fallback Active)"}`);
+    });
+  }
+}
+
+if (process.env.VERCEL !== "1") {
+  startServer().catch((err) => {
+    console.error("Gagal menyalakan server:", err);
   });
 }
 
-startServer().catch((err) => {
-  console.error("Gagal menyalakan server:", err);
-});
+export default app;
