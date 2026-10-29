@@ -1,0 +1,6 @@
+{
+  "name": "BigData TP1 Lab Companion",
+  "description": "Pendamping Tugas Pemantapan 1 Big Data (Penyiapan dan Pemantauan Klaster Hadoop/Spark), STMIK Pelita Nusantara.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
