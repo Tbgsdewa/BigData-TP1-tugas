@@ -1,20 +1,9 @@
 import React, { useState, useMemo } from "react";
-import {
-  Camera,
-  Clock,
-  Check,
-  AlertCircle,
-  Download,
-  Search,
-  FileSpreadsheet,
-  FileJson,
-  Wand2,
-  Sparkles,
-  Database,
-} from "lucide-react";
+import { Clock, Database, FileJson, FileSpreadsheet, Sparkles, Wand2 } from "lucide-react";
 import { EVIDENCE_DEF } from "../constants";
 import { mongoService } from "../services/mongoService";
 import { AppState, EvidenceItem } from "../types";
+import { Chip, EmptyState, Meter, MicroLabel, Panel, SegButton } from "../components/ui";
 
 interface EvidenceProps {
   state: AppState;
@@ -54,7 +43,6 @@ export const EvidenceTab: React.FC<EvidenceProps> = ({ state, onChange }) => {
   }).length;
 
   const total = EVIDENCE_DEF.length;
-  const progressPct = Math.round((completedCount / total) * 100);
 
   const handleUpdateItem = (id: string, field: keyof EvidenceItem, val: string) => {
     onChange((prev) => {
@@ -252,109 +240,85 @@ export const EvidenceTab: React.FC<EvidenceProps> = ({ state, onChange }) => {
     });
   }, [state.evidence, filterStatus, searchQuery]);
 
-  const isDark = state.theme === "dark";
-
   return (
     <div className="space-y-6">
-      {/* Header Info & Progress Strip */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
+      {/* Header, meter kelengkapan, toolbar batch/ekspor, filter & pencarian */}
+      <Panel
+        no="5"
+        title="Bukti Pelaksanaan E01–E16"
+        sub="Nama berkas tangkapan layar, catatan observasi (minimal 20 karakter), dan manifest bukti."
+        actions={<Meter value={completedCount} total={total} completeLabel="Kelengkapan Bukti" className="w-44" />}
       >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800/80">
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Camera className="w-4 h-4 text-indigo-400" />
-              Katalog & Manajemen Metadata Bukti Pelaksanaan (E01 - E16)
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Kelola metadata berkas tangkapan layar, observasi formal ilmiah (&ge; 20 karakter), dan ekspor manifest bukti.
-            </p>
-          </div>
-
-          <div className="w-full md:w-60 text-xs">
-            <div className="flex justify-between items-center mb-1 font-mono">
-              <span className="text-slate-400">Kelengkapan Bukti</span>
-              <span className="font-semibold text-slate-200 tabular-nums">
-                {completedCount} / {total} ({progressPct}%)
-              </span>
-            </div>
-            <div className="w-full bg-slate-950 rounded h-1.5 overflow-hidden border border-slate-800">
-              <div
-                className={`h-1.5 rounded transition-all duration-200 ${
-                  completedCount === total ? "bg-emerald-500" : "bg-indigo-500"
-                }`}
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Toolbar: Batch Utilities & Manifest Exporters */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 mt-4 text-xs font-mono">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Batch Assistants */}
           <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
               onClick={handleNormalizeAllFilenames}
-              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-200 transition-colors flex items-center gap-1.5"
+              className="btn btn-outline"
               title="Mengisi seluruh nama berkas dengan pola resmi: E##_<NIM>_<nama>.png"
             >
-              <Wand2 className="w-3.5 h-3.5 text-indigo-400" />
+              <Wand2 className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               <span>Normalisasi Nama Berkas</span>
             </button>
 
             <button
+              type="button"
               onClick={handlePopulateFormalTemplates}
-              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-200 transition-colors flex items-center gap-1.5"
+              className="btn btn-outline"
               title="Mengisi deskripsi observasi akademis terstruktur pada baris yang masih kosong"
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               <span>Lengkapi Template Observasi</span>
             </button>
 
             <button
+              type="button"
               onClick={handleSyncTimestamps}
-              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-200 transition-colors flex items-center gap-1.5"
+              className="btn btn-outline"
               title="Isi waktu saat ini pada tanggal eksekusi yang masih kosong"
             >
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <Clock className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               <span>Sinkronisasi Waktu</span>
             </button>
           </div>
 
           {/* Manifest Export Buttons */}
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 text-[11px] font-sans">Ekspor Manifest:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <MicroLabel className="mr-0.5">Ekspor Manifest</MicroLabel>
             <button
+              type="button"
               onClick={handleExportCsv}
-              className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded text-slate-300 transition-colors flex items-center gap-1"
+              className="btn btn-outline font-mono"
               title="Unduh manifest bukti format CSV"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
               <span>.CSV</span>
             </button>
             <button
+              type="button"
               onClick={handleExportJson}
-              className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded text-slate-300 transition-colors flex items-center gap-1"
+              className="btn btn-outline font-mono"
               title="Unduh manifest bukti format JSON"
             >
-              <FileJson className="w-3.5 h-3.5 text-purple-400" />
+              <FileJson className="h-3.5 w-3.5" aria-hidden="true" />
               <span>.JSON</span>
             </button>
             <button
+              type="button"
               onClick={handleSyncToMongo}
               disabled={mongoSyncStatus === "syncing"}
-              className={`px-2.5 py-1 border rounded transition-colors flex items-center gap-1 ${
+              className={`btn font-mono ${
                 mongoSyncStatus === "synced"
-                  ? "bg-emerald-950 text-emerald-300 border-emerald-800"
+                  ? "border border-ok/50 bg-ok-wash text-ok"
                   : mongoSyncStatus === "error"
-                  ? "bg-rose-950 text-rose-300 border-rose-800"
-                  : "bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-800/60"
+                  ? "border border-danger/50 bg-danger-wash text-danger"
+                  : "border border-accent/50 bg-surface text-accent hover:border-accent"
               }`}
               title="Sinkronkan seluruh daftar bukti E01-E16 ke koleksi MongoDB"
             >
-              <Database className="w-3.5 h-3.5" />
+              <Database className="h-3.5 w-3.5" aria-hidden="true" />
               <span>
                 {mongoSyncStatus === "syncing"
                   ? "Sync..."
@@ -369,199 +333,204 @@ export const EvidenceTab: React.FC<EvidenceProps> = ({ state, onChange }) => {
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-3 pt-3 border-t border-slate-800/60 font-mono text-xs">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setFilterStatus("ALL")}
-              className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                filterStatus === "ALL"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+        <div className="mt-4 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Filter status bukti">
+            <SegButton active={filterStatus === "ALL"} onClick={() => setFilterStatus("ALL")}>
               Semua ({total})
-            </button>
-            <button
-              onClick={() => setFilterStatus("INCOMPLETE")}
-              className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                filterStatus === "INCOMPLETE"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+            </SegButton>
+            <SegButton active={filterStatus === "INCOMPLETE"} onClick={() => setFilterStatus("INCOMPLETE")}>
               Belum Lengkap ({total - completedCount})
-            </button>
-            <button
-              onClick={() => setFilterStatus("COMPLETE")}
-              className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                filterStatus === "COMPLETE"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+            </SegButton>
+            <SegButton active={filterStatus === "COMPLETE"} onClick={() => setFilterStatus("COMPLETE")}>
               Lengkap ({completedCount})
-            </button>
+            </SegButton>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+          <div className="w-full sm:w-64">
+            <label htmlFor="evidence-search" className="sr-only">
+              Cari bukti, nama berkas, atau observasi
+            </label>
             <input
+              id="evidence-search"
               type="text"
               placeholder="Cari bukti / file / observasi..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded pl-8 pr-3 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+              className="field font-mono"
             />
           </div>
         </div>
-      </section>
+      </Panel>
 
       {/* Evidence Table */}
-      <section
-        className={`border rounded-lg overflow-hidden transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-sans">
-            <thead className="bg-slate-950 text-slate-400 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-800">
-              <tr>
-                <th className="py-2.5 px-4 w-14 font-mono">ID</th>
-                <th className="py-2.5 px-4 w-16 font-mono">Langkah</th>
-                <th className="py-2.5 px-4 w-56">Deskripsi Bukti</th>
-                <th className="py-2.5 px-4 w-56 font-mono">Nama Berkas Gambar</th>
-                <th className="py-2.5 px-4">Keterangan Observasi Terverifikasi</th>
-                <th className="py-2.5 px-4 w-44 font-mono">Waktu Eksekusi</th>
-                <th className="py-2.5 px-4 w-16 text-center font-mono">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80">
-              {filteredEvidence.map((def) => {
-                const item = state.evidence[def.id] || {
-                  id: def.id,
-                  stepId: def.stepId,
-                  title: def.title,
-                  filename: "",
-                  notes: "",
-                  timestamp: "",
-                };
+      <section className="panel overflow-hidden rounded-sm">
+        {filteredEvidence.length === 0 ? (
+          <EmptyState
+            className="m-4"
+            text={`Filter dan pencarian menghasilkan 0 baris. Ubah status filter atau kosongkan kata kunci "${searchQuery.trim()}."`}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-xs">
+              <thead>
+                <tr className="border-b border-line-strong bg-surface-2">
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    ID
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    Langkah
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    Deskripsi Bukti
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    Nama Berkas Gambar
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    Keterangan Observasi Terverifikasi
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 font-semibold">
+                    Waktu Eksekusi
+                  </th>
+                  <th scope="col" className="label-micro px-4 py-2.5 text-center font-semibold">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {filteredEvidence.map((def) => {
+                  const item = state.evidence[def.id] || {
+                    id: def.id,
+                    stepId: def.stepId,
+                    title: def.title,
+                    filename: "",
+                    notes: "",
+                    timestamp: "",
+                  };
 
-                const isNotesValid = item.notes.trim().length >= 20;
-                const isFileValid = item.filename.trim() !== "";
-                const isComplete = isNotesValid && isFileValid;
+                  const isNotesValid = item.notes.trim().length >= 20;
+                  const isFileValid = item.filename.trim() !== "";
+                  const isComplete = isNotesValid && isFileValid;
 
-                return (
-                  <tr
-                    key={def.id}
-                    className={`hover:bg-slate-800/20 transition-colors ${
-                      isComplete ? "bg-slate-950/20" : "bg-slate-950/50"
-                    }`}
-                  >
-                    <td className="py-2.5 px-4 font-mono font-bold text-indigo-400">{def.id}</td>
-                    <td className="py-2.5 px-4 font-mono text-slate-400">{def.stepId}</td>
-                    <td className="py-2.5 px-4 font-medium text-slate-200 leading-snug">
-                      {def.title}
-                    </td>
+                  return (
+                    <tr key={def.id} className="transition-colors hover:bg-surface-2/60">
+                      <td className="px-4 py-2.5 align-top font-mono font-bold text-accent">{def.id}</td>
+                      <td className="px-4 py-2.5 align-top font-mono text-ink-muted">{def.stepId}</td>
+                      <td className="px-4 py-2.5 align-top font-medium leading-snug text-ink">{def.title}</td>
 
-                    {/* Filename Input */}
-                    <td className="py-2.5 px-4">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          placeholder={def.defaultFilenamePattern.replace(/<NIM>/g, primaryNim)}
-                          value={item.filename}
-                          onChange={(e) => handleUpdateItem(def.id, "filename", e.target.value)}
-                          className={`w-full bg-slate-950 border rounded px-2 py-1 text-xs font-mono text-white placeholder-slate-700 focus:outline-none ${
-                            isFileValid ? "border-slate-800 focus:border-indigo-500" : "border-amber-600/60"
-                          }`}
-                        />
-                        {!item.filename && (
-                          <button
-                            onClick={() =>
-                              handleUpdateItem(
-                                def.id,
-                                "filename",
-                                def.defaultFilenamePattern.replace(/<NIM>/g, primaryNim)
-                              )
-                            }
-                            className="p-1 text-slate-500 hover:text-indigo-400 transition-colors"
-                            title="Terapkan nama standar"
-                          >
-                            <Wand2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Notes Textarea & Template Helper */}
-                    <td className="py-2.5 px-4">
-                      <div className="space-y-1">
-                        <textarea
-                          rows={2}
-                          placeholder={def.formalTemplate}
-                          value={item.notes}
-                          onChange={(e) => handleUpdateItem(def.id, "notes", e.target.value)}
-                          className={`w-full bg-slate-950 border rounded p-1.5 text-xs text-white placeholder-slate-700 focus:outline-none leading-relaxed ${
-                            isNotesValid ? "border-slate-800 focus:border-indigo-500" : "border-amber-600/60"
-                          }`}
-                        />
-                        <div className="flex justify-between items-center text-[10px] font-mono">
-                          <button
-                            onClick={() => handleUpdateItem(def.id, "notes", def.formalTemplate)}
-                            className="text-slate-500 hover:text-cyan-400 transition-colors font-sans"
-                            title="Terapkan template observasi standar ilmiah"
-                          >
-                            Terapkan Template
-                          </button>
-                          <span
-                            className={
-                              isNotesValid ? "text-slate-500" : "text-amber-400 font-semibold"
-                            }
-                          >
-                            {item.notes.length}/20 karakter
-                          </span>
+                      {/* Filename Input */}
+                      <td className="px-4 py-2.5 align-top">
+                        <label htmlFor={`ev-${def.id}-filename`} className="sr-only">
+                          Nama berkas gambar {def.id}
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            id={`ev-${def.id}-filename`}
+                            type="text"
+                            placeholder={def.defaultFilenamePattern.replace(/<NIM>/g, primaryNim)}
+                            value={item.filename}
+                            onChange={(e) => handleUpdateItem(def.id, "filename", e.target.value)}
+                            className={`field field-mono min-w-[190px] !text-[11px] ${
+                              isFileValid ? "" : "!border-warn"
+                            }`}
+                          />
+                          {!item.filename && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUpdateItem(
+                                  def.id,
+                                  "filename",
+                                  def.defaultFilenamePattern.replace(/<NIM>/g, primaryNim)
+                                )
+                              }
+                              className="btn btn-ghost !px-1.5 !py-1"
+                              title="Terapkan nama standar"
+                              aria-label={`Terapkan nama standar untuk ${def.id}`}
+                            >
+                              <Wand2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Timestamp Input */}
-                    <td className="py-2.5 px-4 font-mono">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          placeholder="YYYY-MM-DD HH:MM:SS"
-                          value={item.timestamp}
-                          onChange={(e) => handleUpdateItem(def.id, "timestamp", e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-indigo-500"
-                        />
-                        <button
-                          onClick={() => setNowTimestamp(def.id)}
-                          className="p-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 transition-colors"
-                          title="Isi waktu saat ini"
-                        >
-                          <Clock className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+                      {/* Notes Textarea & Template Helper */}
+                      <td className="px-4 py-2.5 align-top">
+                        <label htmlFor={`ev-${def.id}-notes`} className="sr-only">
+                          Keterangan observasi {def.id}
+                        </label>
+                        <div className="space-y-1">
+                          <textarea
+                            id={`ev-${def.id}-notes`}
+                            rows={2}
+                            placeholder={def.formalTemplate}
+                            value={item.notes}
+                            onChange={(e) => handleUpdateItem(def.id, "notes", e.target.value)}
+                            className={`field min-w-[240px] leading-relaxed ${
+                              isNotesValid ? "" : "!border-warn"
+                            }`}
+                          />
+                          <div className="flex items-center justify-between gap-2 font-mono text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItem(def.id, "notes", def.formalTemplate)}
+                              className="text-ink-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
+                              title="Terapkan template observasi standar ilmiah"
+                            >
+                              Terapkan Template
+                            </button>
+                            <span className={`tabular-nums ${isNotesValid ? "text-ink-muted" : "font-semibold text-warn"}`}>
+                              {item.notes.length}/20 karakter
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                    {/* Status Checkmark */}
-                    <td className="py-2.5 px-4 text-center font-mono">
-                      {isComplete ? (
-                        <span className="text-emerald-400 font-bold" title="Lengkap (File + Keterangan &ge; 20 Karakter)">
-                          <Check className="w-4 h-4 mx-auto" />
-                        </span>
-                      ) : (
-                        <span className="text-amber-500" title="Belum Lengkap">
-                          <AlertCircle className="w-4 h-4 mx-auto" />
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {/* Timestamp Input */}
+                      <td className="px-4 py-2.5 align-top">
+                        <label htmlFor={`ev-${def.id}-timestamp`} className="sr-only">
+                          Waktu eksekusi {def.id}
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            id={`ev-${def.id}-timestamp`}
+                            type="text"
+                            placeholder="YYYY-MM-DD HH:MM:SS"
+                            value={item.timestamp}
+                            onChange={(e) => handleUpdateItem(def.id, "timestamp", e.target.value)}
+                            className="field field-mono min-w-[150px] !text-[11px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNowTimestamp(def.id)}
+                            className="btn btn-outline !px-1.5 !py-1.5"
+                            title="Isi waktu saat ini"
+                            aria-label={`Isi waktu saat ini untuk ${def.id}`}
+                          >
+                            <Clock className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Completeness Status */}
+                      <td className="px-4 py-2.5 text-center align-top">
+                        {isComplete ? (
+                          <Chip tone="ok" title="Lengkap (File + Keterangan ≥ 20 Karakter)">
+                            LENGKAP
+                          </Chip>
+                        ) : (
+                          <Chip tone="warn" title="Belum Lengkap">
+                            BELUM
+                          </Chip>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

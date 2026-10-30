@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Activity, Clock, Info } from "lucide-react";
 import { KNOWN_ISSUES } from "../constants";
 import {
   parseDfsAdmin,
@@ -21,6 +20,7 @@ import {
   evaluateYarnApps,
   evaluateYarnNodes,
 } from "../validate";
+import { Chip, CopyButton, Panel, VerdictChip } from "../components/ui";
 
 interface MonitorProps {
   state: AppState;
@@ -55,36 +55,6 @@ export const MonitorTab: React.FC<MonitorProps> = ({ state, onChange }) => {
   // Check Known Issues in all logs
   const combinedLogText = Object.values(logs).join("\n");
   const detectedIssues = KNOWN_ISSUES.filter((ki) => ki.regex.test(combinedLogText));
-
-  // Render squared status indicator (strictly anti-pill)
-  const renderBadge = (status: StatusVerdict) => {
-    switch (status) {
-      case "PASS":
-        return (
-          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
-            PASS
-          </span>
-        );
-      case "WARN":
-        return (
-          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/80">
-            WARN
-          </span>
-        );
-      case "FAIL":
-        return (
-          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-rose-950/80 text-rose-400 border border-rose-800/80">
-            FAIL
-          </span>
-        );
-      default:
-        return (
-          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700">
-            TIDAK TERBACA
-          </span>
-        );
-    }
-  };
 
   const logSources: Array<{
     key: keyof typeof state.monitorLogs;
@@ -144,182 +114,217 @@ export const MonitorTab: React.FC<MonitorProps> = ({ state, onChange }) => {
     },
   ];
 
-  const isDark = state.theme === "dark";
+  const activeSource = logSources.find((s) => s.key === activeTabKey);
+  const activeTitle = activeSource ? activeSource.title : "spark-submit Exit Code";
+  const activeVerdict: StatusVerdict =
+    activeTabKey === "dfsadmin"
+      ? evalDfs.verdict
+      : activeTabKey === "yarnNodes"
+      ? evalYnNodes.verdict
+      : activeTabKey === "yarnApps"
+      ? evalYnApps.verdict
+      : activeTabKey === "fsck"
+      ? evalFsck.verdict
+      : activeTabKey === "mrLog"
+      ? evalMr.verdict
+      : activeTabKey === "sparkLog"
+      ? evalSpLog.verdict
+      : evalSpJson.verdict;
+
+  const rowAccent = (isActive: boolean) =>
+    `border-l-2 ${isActive ? "border-l-accent" : "border-l-transparent"}`;
 
   return (
     <div className="space-y-6">
-      {/* Header Info */}
-      <section className={`border rounded-lg p-5 transition-colors ${
-        isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-      }`}>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-indigo-400" />
-              Pemantauan & Evaluasi Status Klaster
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Parser deterministik berbasis regex ketat. Tidak ada data sintetis; parser menghasilkan TIDAK TERBACA jika teks tidak sesuai.
-            </p>
-          </div>
-          <div className="text-xs text-slate-400 font-mono">
-            Toleransi galat: 0 · Nilai waktu hanya informasi
-          </div>
-        </div>
-      </section>
+      {/* Panel 3 — Header pemantauan */}
+      <Panel
+        no="3"
+        title="Pantauan Status Klaster"
+        sub="Tempel keluaran terminal asli. Parser menolak menebak: format tidak cocok berarti TIDAK TERBACA, bukan status palsu."
+        actions={
+          <span className="page-meta">Toleransi galat: 0 · Nilai waktu hanya informasi</span>
+        }
+      >
+        <p className="text-xs leading-relaxed text-ink-soft">
+          Pilih satu sumber log pada tabel status di bawah untuk mempaste dan menguji teks mentah
+          terminal. Verdict dihitung langsung dari isi textarea — kosong berarti TIDAK TERBACA.
+        </p>
+      </Panel>
 
-      {/* Known Issues Alert Box */}
+      {/* Kendala teridentifikasi */}
       {detectedIssues.length > 0 && (
-        <section className="bg-rose-950/30 border border-rose-800/60 rounded-lg p-4">
-          <h3 className="text-xs font-bold text-rose-300 mb-2">
-            Terdeteksi {detectedIssues.length} Kendala Teridentifikasi pada Log:
-          </h3>
-          <div className="space-y-2">
-            {detectedIssues.map((issue, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-950 p-3 rounded border border-rose-800/40 text-xs font-mono"
-              >
-                <span className="font-bold text-rose-400 block">{issue.label}</span>
-                <span className="text-slate-300 font-sans mt-0.5 block">Solusi: {issue.solution}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+        <Panel
+          title={`Terdeteksi ${detectedIssues.length} Kendala Teridentifikasi pada Log`}
+          className="border-danger/50 bg-danger-wash/40"
+          bodyClassName="space-y-2"
+        >
+          {detectedIssues.map((issue, idx) => (
+            <div key={idx} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <Chip tone="danger">{issue.label}</Chip>
+              <span className="text-xs text-ink-soft">Solusi: {issue.solution}</span>
+            </div>
+          ))}
+        </Panel>
       )}
 
-      {/* Grid of Status Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {logSources.map((item) => (
-          <div
-            key={item.key}
-            onClick={() => setActiveTabKey(item.key)}
-            className={`cursor-pointer p-3.5 rounded border transition-colors ${
-              activeTabKey === item.key
-                ? "bg-slate-900 border-indigo-500"
-                : isDark
-                ? "bg-[#0d1322] border-slate-800 hover:border-slate-700"
-                : "bg-white border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-xs font-semibold text-slate-200 truncate">{item.title}</span>
-              {renderBadge(item.verdict)}
-            </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2">{item.details}</p>
-          </div>
-        ))}
+      {/* Tabel status sumber log */}
+      <Panel title="Status Sumber Log" sub="Klik baris untuk memilih sumber yang aktif diedit." flush>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left text-xs">
+            <caption className="sr-only">
+              Status verdict setiap sumber log klaster; pilih baris untuk mengedit teks log
+            </caption>
+            <thead>
+              <tr className="border-b border-line bg-surface-2">
+                <th scope="col" className="label-micro px-4 py-2 font-normal">Sumber Log</th>
+                <th scope="col" className="label-micro px-4 py-2 font-normal">Perintah</th>
+                <th scope="col" className="label-micro px-4 py-2 font-normal">Verdict</th>
+                <th scope="col" className="label-micro px-4 py-2 font-normal">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {logSources.map((item) => {
+                const isActive = activeTabKey === item.key;
+                return (
+                  <tr
+                    key={item.key}
+                    onClick={() => setActiveTabKey(item.key)}
+                    aria-current={isActive ? "true" : undefined}
+                    className={`cursor-pointer transition-colors hover:bg-surface-2/70 ${
+                      isActive ? "bg-surface-2" : ""
+                    }`}
+                  >
+                    <td className={`px-4 py-2.5 align-top ${rowAccent(isActive)}`}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTabKey(item.key)}
+                        aria-pressed={isActive}
+                        className={`text-left font-semibold transition-colors ${
+                          isActive ? "text-ink" : "text-ink-soft hover:text-ink"
+                        }`}
+                      >
+                        {item.title}
+                      </button>
+                    </td>
+                    <td className={`px-4 py-2.5 align-top font-mono text-[11px] text-ink-muted ${rowAccent(isActive)}`}>
+                      {item.cmd}
+                    </td>
+                    <td className={`px-4 py-2.5 align-top ${rowAccent(isActive)}`}>
+                      <VerdictChip verdict={item.verdict} />
+                    </td>
+                    <td className={`px-4 py-2.5 align-top text-[11px] leading-relaxed text-ink-muted ${rowAccent(isActive)}`}>
+                      {item.details}
+                    </td>
+                  </tr>
+                );
+              })}
 
-        {/* Exit Code Card */}
-        <div className={`p-3.5 rounded border flex flex-col justify-between ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}>
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs font-semibold text-slate-200">spark-submit Exit Code</span>
-            {renderBadge(evalSpExit.verdict)}
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <input
-              type="text"
-              placeholder="0"
-              value={logs.sparkExitCode}
-              onChange={(e) => handleUpdateLog("sparkExitCode", e.target.value)}
-              className="w-16 bg-slate-950 border border-slate-800 text-center font-mono font-semibold text-xs text-white py-1 rounded focus:outline-none focus:border-indigo-500"
-            />
-            <span className="text-[11px] text-slate-400 font-mono">(0 = PASS)</span>
-          </div>
+              {/* Baris khusus: exit code dengan input kecil */}
+              <tr className="bg-surface">
+                <td className={`px-4 py-2.5 align-top ${rowAccent(false)}`}>
+                  <span className="font-semibold text-ink-soft">spark-submit Exit Code</span>
+                  <span className="label-micro mt-0.5 block">Input manual</span>
+                </td>
+                <td className={`px-4 py-2.5 align-top font-mono text-[11px] text-ink-muted ${rowAccent(false)}`}>
+                  echo $LASTEXITCODE / $?
+                </td>
+                <td className={`px-4 py-2.5 align-top ${rowAccent(false)}`}>
+                  <VerdictChip verdict={evalSpExit.verdict} />
+                </td>
+                <td className={`px-4 py-2.5 align-top ${rowAccent(false)}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={logs.sparkExitCode}
+                      onChange={(e) => handleUpdateLog("sparkExitCode", e.target.value)}
+                      aria-label="Kode keluar spark-submit"
+                      className="field field-mono !w-16 !py-1 text-center font-semibold"
+                    />
+                    <span className="font-mono text-[11px] text-ink-muted">(0 = PASS)</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
+      </Panel>
 
-      {/* Informational Durations Notice */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className={`p-3 rounded border flex items-center justify-between text-xs ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}>
-          <div className="flex items-center gap-2 text-slate-300">
-            <Clock className="w-4 h-4 text-cyan-400" />
-            <span>Waktu CPU Map Tasks (MapReduce):</span>
-          </div>
-          <div className="flex items-center gap-2 font-mono">
-            <span className="font-semibold text-cyan-300 tabular-nums">
+      {/* Informasi durasi — bukan bagian verdict */}
+      <Panel
+        title="Durasi Job"
+        sub="Angka waktu semata-mata informasi eksekusi; tidak memengaruhi verdict validasi."
+        bodyClassName="grid grid-cols-1 gap-px bg-line sm:grid-cols-2"
+        flush
+      >
+        <div className="bg-surface px-4 py-3">
+          <dt className="label-micro">Waktu CPU Map Tasks (MapReduce)</dt>
+          <dd className="mt-1 flex items-baseline gap-2">
+            <span className="font-mono text-sm font-semibold tabular-nums text-ink">
               {evalMr.durationMs !== null ? `${evalMr.durationMs} ms` : "N/A"}
             </span>
-            <span className="text-[10px] text-slate-400 font-sans border-l border-slate-700 pl-2">
-              Informasi Saja
-            </span>
-          </div>
+            <span className="status-chip chip-neutral">Informasi Saja</span>
+          </dd>
         </div>
-
-        <div className={`p-3 rounded border flex items-center justify-between text-xs ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}>
-          <div className="flex items-center gap-2 text-slate-300">
-            <Clock className="w-4 h-4 text-purple-400" />
-            <span>Durasi Job Spark (Job 0):</span>
-          </div>
-          <div className="flex items-center gap-2 font-mono">
-            <span className="font-semibold text-purple-300 tabular-nums">
+        <div className="bg-surface px-4 py-3">
+          <dt className="label-micro">Durasi Job Spark (Job 0)</dt>
+          <dd className="mt-1 flex items-baseline gap-2">
+            <span className="font-mono text-sm font-semibold tabular-nums text-ink">
               {evalSpLog.durationSec !== null ? `${evalSpLog.durationSec} s` : "N/A"}
             </span>
-            <span className="text-[10px] text-slate-400 font-sans border-l border-slate-700 pl-2">
-              Informasi Saja
+            <span className="status-chip chip-neutral">Informasi Saja</span>
+          </dd>
+        </div>
+      </Panel>
+
+      {/* Editor log aktif */}
+      <Panel
+        title={
+          <span className="flex flex-wrap items-baseline gap-2">
+            <span>Sumber Log:</span>
+            <span className="font-mono text-accent">{activeTitle}</span>
+          </span>
+        }
+        actions={<VerdictChip verdict={activeVerdict} />}
+      >
+        {/* Caption perintah ala CommandBlock */}
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-code-line bg-code-2 px-3 py-1.5">
+          <span className="flex min-w-0 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-code-muted">
+            <span aria-hidden="true" className="shrink-0 text-accent-strong">$</span>
+            <span className="truncate normal-case">
+              {activeSource ? activeSource.cmd : "spark-submit exit code manual"}
             </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Active Log Editor Section */}
-      <section className={`border rounded-lg p-5 transition-colors ${
-        isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-      }`}>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-          <div>
-            <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-              <span>Sumber Log:</span>
-              <span className="font-mono text-indigo-400">
-                {logSources.find((s) => s.key === activeTabKey)?.title}
-              </span>
-            </h3>
-            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-              {logSources.find((s) => s.key === activeTabKey)?.cmd}
-            </p>
-          </div>
-          <div>
-            {renderBadge(
-              activeTabKey === "dfsadmin"
-                ? evalDfs.verdict
-                : activeTabKey === "yarnNodes"
-                ? evalYnNodes.verdict
-                : activeTabKey === "yarnApps"
-                ? evalYnApps.verdict
-                : activeTabKey === "fsck"
-                ? evalFsck.verdict
-                : activeTabKey === "mrLog"
-                ? evalMr.verdict
-                : activeTabKey === "sparkLog"
-                ? evalSpLog.verdict
-                : evalSpJson.verdict
-            )}
-          </div>
+          </span>
+          <CopyButton
+            text={activeSource ? activeSource.cmd : logs.sparkExitCode}
+            className="!border-code-line !bg-transparent !text-code-muted hover:!text-code-ink"
+          />
         </div>
 
+        <label htmlFor="monitor-log-input" className="sr-only">
+          Isi log {activeTitle}
+        </label>
         <textarea
+          id="monitor-log-input"
           rows={11}
           value={logs[activeTabKey]}
           onChange={(e) => handleUpdateLog(activeTabKey, e.target.value)}
           placeholder={`Tempelkan output teks mentah dari terminal untuk ${activeTabKey}...`}
-          className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-[11px] font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 leading-relaxed"
+          className="w-full rounded-sm border border-code-line bg-code px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-code-ink placeholder:text-code-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
-        <div className="flex justify-between items-center mt-2 text-xs text-slate-400 font-mono">
-          <span>Karakter: {logs[activeTabKey]?.length || 0}</span>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="font-mono text-[11px] text-ink-muted">
+            Karakter: {logs[activeTabKey]?.length || 0}
+          </span>
           <button
+            type="button"
             onClick={() => handleUpdateLog(activeTabKey, "")}
-            className="text-slate-500 hover:text-slate-300 transition-colors font-sans text-xs"
+            className="btn btn-ghost !text-xs"
           >
             Kosongkan Teks
           </button>
         </div>
-      </section>
+      </Panel>
     </div>
   );
 };

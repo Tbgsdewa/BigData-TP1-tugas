@@ -1,19 +1,10 @@
 import React, { useState, useMemo } from "react";
-import {
-  Check,
-  X,
-  ShieldCheck,
-  AlertCircle,
-  FileCode,
-  Scale,
-  ArrowUpDown,
-  Filter,
-  CheckCheck,
-} from "lucide-react";
+import { Check, X } from "lucide-react";
 import { DATASET } from "../constants";
 import { parseWordCountOutputDetailed } from "../parsers";
 import { AppState } from "../types";
 import { compareWordCounts } from "../validate";
+import { Chip, FieldLabel, MicroLabel, Panel, SegButton } from "../components/ui";
 
 interface ValidationProps {
   state: AppState;
@@ -21,6 +12,16 @@ interface ValidationProps {
 }
 
 type SortMode = "FREQUENCY" | "ALPHABETICAL" | "DISCREPANCY";
+
+/** Baris checkpoint syarat validasi — ikon centang/silang fungsional, warna status token. */
+const Checkpoint: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) => (
+  <div className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
+    <span className={ok ? "text-ok" : "text-danger"} aria-hidden="true">
+      {ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+    </span>
+    <span className="font-mono text-[11px] text-ink-soft">{label}</span>
+  </div>
+);
 
 export const ValidationTab: React.FC<ValidationProps> = ({ state, onChange }) => {
   const [sortMode, setSortMode] = useState<SortMode>("FREQUENCY");
@@ -97,297 +98,202 @@ export const ValidationTab: React.FC<ValidationProps> = ({ state, onChange }) =>
     return list;
   }, [allWordsEncountered, sortMode, mrMap, sparkMap]);
 
-  const isDark = state.theme === "dark";
+  const isValid = cmpResult.verdict === "VALID";
 
   return (
     <div className="space-y-6">
-      {/* Header Info */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Scale className="w-4 h-4 text-indigo-400" />
-              Validasi & Komparasi Output WordCount (Hadoop vs Spark)
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Inspeksi deterministik toleransi 0 terhadap dataset acuan 1.500 kata. Mendukung deteksi separator TAB maupun normalisasi multi-spasi terminal.
-            </p>
-          </div>
-          <div className="text-xs font-mono text-slate-300 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded flex items-center gap-2">
-            <span>Acuan:</span>
-            <strong className="text-emerald-400">{DATASET.file}</strong>
-            <span className="text-slate-500">·</span>
+      {/* Header Info + strip acuan dataset */}
+      <Panel
+        no="4"
+        title="Komparasi WordCount MR vs Spark"
+        sub="Bandingkan baris per baris terhadap acuan 1.500 kata; toleransi selisih 0, separator TAB atau spasi ganda sama-sama ditangani."
+        actions={
+          <div className="flex items-center gap-2 rounded-sm border border-line bg-surface-2 px-3 py-1.5 font-mono text-[11px] text-ink-soft">
+            <MicroLabel>Acuan</MicroLabel>
+            <span className="text-accent">{DATASET.file}</span>
+            <span aria-hidden="true" className="text-ink-muted">
+              ·
+            </span>
             <span>{DATASET.distinct} kata</span>
-            <span className="text-slate-500">·</span>
-            <span className="tabular-nums font-semibold">{DATASET.totalWords} baris</span>
+            <span aria-hidden="true" className="text-ink-muted">
+              ·
+            </span>
+            <span className="tabular-nums font-semibold text-ink">{DATASET.totalWords} baris</span>
           </div>
-        </div>
-      </section>
-
-      {/* Primary Verification Telemetry Panel */}
-      <div
-        className={`p-5 rounded-lg border transition-colors ${
-          cmpResult.verdict === "VALID"
-            ? "bg-emerald-950/20 border-emerald-800/80 text-emerald-200"
-            : "bg-rose-950/20 border-rose-800/80 text-rose-200"
-        }`}
+        }
       >
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex items-center gap-3">
-            {cmpResult.verdict === "VALID" ? (
-              <ShieldCheck className="w-8 h-8 text-emerald-400 shrink-0" />
-            ) : (
-              <AlertCircle className="w-8 h-8 text-rose-400 shrink-0" />
-            )}
-            <div>
-              <div className="flex items-center gap-2 font-mono">
-                <span className="text-xs uppercase tracking-wider text-slate-400">Status Validasi:</span>
-                <span
-                  className={`text-sm font-bold px-2 py-0.5 rounded ${
-                    cmpResult.verdict === "VALID"
-                      ? "bg-emerald-500 text-slate-950"
-                      : "bg-rose-600 text-white"
-                  }`}
-                >
-                  {cmpResult.verdict}
-                </span>
-                <span className="text-xs text-slate-400 font-sans ml-1">
-                  (Paritas: <strong className="font-mono text-white">{cmpResult.parityRatio}%</strong>)
-                </span>
-              </div>
-              <p className="text-xs mt-1 text-slate-300">
-                {cmpResult.verdict === "VALID"
-                  ? "Seluruh 4 syarat validasi terpenuhi sempurna: kunci identik, hitungan exact, total 1.500 kata, dan hasil MapReduce == Spark."
-                  : "Hasil komputasi belum lulus 4 syarat acuan. Periksa rincian tabel perbandingan di bawah."}
-              </p>
+        {/* Verdict banner: kiri verdict besar + paritas, kanan 2x2 checkpoint */}
+        <div
+          className={`flex flex-col gap-4 rounded-sm border p-4 lg:flex-row lg:items-center lg:justify-between ${
+            isValid ? "border-ok/40 bg-ok-wash" : "border-danger/40 bg-danger-wash"
+          }`}
+        >
+          <div className="min-w-0">
+            <MicroLabel>Status Validasi</MicroLabel>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span
+                className={`font-mono text-xl font-bold tracking-tight ${
+                  isValid ? "text-ok" : "text-danger"
+                }`}
+              >
+                {cmpResult.verdict}
+              </span>
+              <span className="font-mono text-xs tabular-nums text-ink-soft">
+                Paritas: <strong className="font-semibold text-ink">{cmpResult.parityRatio}%</strong>
+              </span>
             </div>
+            <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-ink-soft">
+              {isValid
+                ? "Seluruh 4 syarat validasi terpenuhi sempurna: kunci identik, hitungan exact, total 1.500 kata, dan hasil MapReduce == Spark."
+                : "Hasil komputasi belum lulus 4 syarat acuan. Periksa rincian tabel perbandingan di bawah."}
+            </p>
           </div>
 
           {/* 4 Integrity Requirement Checkpoints */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono w-full lg:w-auto">
-            <div
-              className={`px-2.5 py-1.5 rounded border flex items-center gap-1.5 ${
-                cmpResult.isMatchKeys
-                  ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                  : "bg-rose-950/60 border-rose-800 text-rose-300"
-              }`}
-            >
-              {cmpResult.isMatchKeys ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-              <span>1. Kunci Identik</span>
-            </div>
-
-            <div
-              className={`px-2.5 py-1.5 rounded border flex items-center gap-1.5 ${
-                cmpResult.isMatchCounts
-                  ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                  : "bg-rose-950/60 border-rose-800 text-rose-300"
-              }`}
-            >
-              {cmpResult.isMatchCounts ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-              <span>2. Frekuensi Exact</span>
-            </div>
-
-            <div
-              className={`px-2.5 py-1.5 rounded border flex items-center gap-1.5 ${
-                cmpResult.isTotalWords1500
-                  ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                  : "bg-rose-950/60 border-rose-800 text-rose-300"
-              }`}
-            >
-              {cmpResult.isTotalWords1500 ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-              <span>3. Total 1.500</span>
-            </div>
-
-            <div
-              className={`px-2.5 py-1.5 rounded border flex items-center gap-1.5 ${
-                cmpResult.isMrEqualsSpark
-                  ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                  : "bg-rose-950/60 border-rose-800 text-rose-300"
-              }`}
-            >
-              {cmpResult.isMrEqualsSpark ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-              <span>4. MR == Spark</span>
-            </div>
+          <div
+            className="grid w-full shrink-0 grid-cols-1 gap-x-6 sm:grid-cols-2 lg:w-auto"
+            aria-label="Empat syarat validasi"
+          >
+            <Checkpoint ok={cmpResult.isMatchKeys} label="1. Kunci Identik" />
+            <Checkpoint ok={cmpResult.isMatchCounts} label="2. Frekuensi Exact" />
+            <Checkpoint ok={cmpResult.isTotalWords1500} label="3. Total 1.500" />
+            <Checkpoint ok={cmpResult.isMrEqualsSpark} label="4. MR == Spark" />
           </div>
         </div>
 
         {/* Separator detection feedback */}
         {cmpResult.hasSpaceExpandedTabs && (
-          <div className="mt-3 pt-3 border-t border-slate-800/80 text-[11px] font-mono flex items-center gap-2 text-cyan-300">
-            <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <p className="mt-3 flex items-start gap-2 border-t border-line pt-3 font-mono text-[11px] leading-relaxed text-warn">
+            <span aria-hidden="true">※</span>
             <span>
-              Catatan Toleransi Lapangan: Deteksi multi-spasi terkonversi otomatis dari salinan terminal; parsing berhasil dinormalisasi secara deterministik.
+              Catatan Toleransi Lapangan: Deteksi multi-spasi terkonversi otomatis dari salinan terminal;
+              parsing berhasil dinormalisasi secara deterministik.
             </span>
-          </div>
+          </p>
         )}
-      </div>
+      </Panel>
 
       {/* Comparison Table with Sorting Controls */}
-      <section
-        className={`border rounded-lg overflow-hidden transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="px-5 py-3 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/40">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold text-white">
-              Tabel Komparasi Frekuensi Kata Terdistribusi
-            </h3>
-            <span className="text-[11px] font-mono text-slate-400">
-              ({sortedWords.length} entri kata)
-            </span>
-          </div>
-
-          {/* Sort Controls */}
-          <div className="flex items-center gap-1 text-xs font-mono">
-            <span className="text-slate-500 mr-1 text-[11px] font-sans">Urutan:</span>
-            <button
-              onClick={() => setSortMode("FREQUENCY")}
-              className={`px-2 py-1 rounded text-[11px] transition-colors ${
-                sortMode === "FREQUENCY"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+      <Panel
+        flush
+        title="Frekuensi per Kata"
+        sub={`${sortedWords.length} entri kata dibandingkan terhadap acuan.`}
+        actions={
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Urutan tabel">
+            <MicroLabel className="mr-1">Urutan</MicroLabel>
+            <SegButton active={sortMode === "FREQUENCY"} onClick={() => setSortMode("FREQUENCY")}>
               Frekuensi (500 → 100)
-            </button>
-            <button
-              onClick={() => setSortMode("ALPHABETICAL")}
-              className={`px-2 py-1 rounded text-[11px] transition-colors ${
-                sortMode === "ALPHABETICAL"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+            </SegButton>
+            <SegButton active={sortMode === "ALPHABETICAL"} onClick={() => setSortMode("ALPHABETICAL")}>
               Alfabetis (A → Z)
-            </button>
-            <button
-              onClick={() => setSortMode("DISCREPANCY")}
-              className={`px-2 py-1 rounded text-[11px] transition-colors ${
-                sortMode === "DISCREPANCY"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
-              }`}
-            >
+            </SegButton>
+            <SegButton active={sortMode === "DISCREPANCY"} onClick={() => setSortMode("DISCREPANCY")}>
               Prioritas Selisih
-            </button>
+            </SegButton>
           </div>
-        </div>
+        }
+        bodyClassName="overflow-x-auto"
+      >
+        <table className="w-full min-w-[720px] text-left font-mono text-xs">
+          <thead>
+            <tr className="border-b border-line-strong bg-surface-2">
+              <th scope="col" className="label-micro px-5 py-2.5 font-semibold">
+                Kata (Kunci)
+              </th>
+              <th scope="col" className="label-micro px-5 py-2.5 text-right font-semibold">
+                Expected (Acuan)
+              </th>
+              <th scope="col" className="label-micro px-5 py-2.5 text-right font-semibold">
+                MapReduce (part-r-00000)
+              </th>
+              <th scope="col" className="label-micro px-5 py-2.5 text-right font-semibold">
+                Spark (part-00000)
+              </th>
+              <th scope="col" className="label-micro px-5 py-2.5 text-center font-semibold">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {sortedWords.map((word) => {
+              const exp = DATASET.counts[word] ?? 0;
+              const mrVal = mrMap ? mrMap.get(word) ?? null : null;
+              const spVal = sparkMap ? sparkMap.get(word) ?? null : null;
+              const isMatch = mrVal === exp && spVal === exp;
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950 text-slate-400 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-800">
-              <tr>
-                <th className="py-2.5 px-5 w-40">Kata (Kunci)</th>
-                <th className="py-2.5 px-5 text-right w-44">Expected (Acuan)</th>
-                <th className="py-2.5 px-5 text-right w-52">MapReduce (part-r-00000)</th>
-                <th className="py-2.5 px-5 text-right w-52">Spark (part-00000)</th>
-                <th className="py-2.5 px-5 text-center w-36">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80">
-              {sortedWords.map((word) => {
-                const exp = DATASET.counts[word] ?? 0;
-                const mrVal = mrMap ? mrMap.get(word) ?? null : null;
-                const spVal = sparkMap ? sparkMap.get(word) ?? null : null;
-                const isMatch = mrVal === exp && spVal === exp;
-
-                return (
-                  <tr
-                    key={word}
-                    className={`hover:bg-slate-800/20 transition-colors ${
-                      !isMatch ? "bg-rose-950/20" : ""
+              return (
+                <tr key={word} className={`transition-colors hover:bg-surface-2/60 ${!isMatch ? "bg-danger-wash/40" : ""}`}>
+                  <td className="px-5 py-2.5 font-bold text-ink">
+                    {word}
+                    {exp === 0 && <span className="status-chip chip-warn ml-2 font-sans">Kunci Ekstra</span>}
+                  </td>
+                  <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-ink-soft">{exp}</td>
+                  <td
+                    className={`px-5 py-2.5 text-right tabular-nums ${
+                      mrVal === exp ? "text-ok" : "font-bold text-danger"
                     }`}
                   >
-                    <td className="py-2.5 px-5 font-bold text-slate-200">
-                      {word}
-                      {exp === 0 && (
-                        <span className="ml-2 text-[10px] text-rose-400 bg-rose-950 px-1 py-0.5 rounded border border-rose-800 font-sans">
-                          Kunci Ekstra
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-5 text-right font-semibold text-amber-300 tabular-nums">
-                      {exp}
-                    </td>
-                    <td
-                      className={`py-2.5 px-5 text-right tabular-nums ${
-                        mrVal === exp ? "text-emerald-400" : "text-rose-400 font-bold"
-                      }`}
-                    >
-                      {mrVal !== null ? mrVal : <span className="text-slate-600 font-sans">N/A</span>}
-                    </td>
-                    <td
-                      className={`py-2.5 px-5 text-right tabular-nums ${
-                        spVal === exp ? "text-emerald-400" : "text-rose-400 font-bold"
-                      }`}
-                    >
-                      {spVal !== null ? spVal : <span className="text-slate-600 font-sans">N/A</span>}
-                    </td>
-                    <td className="py-2.5 px-5 text-center">
-                      {isMatch ? (
-                        <span className="font-mono text-[11px] font-semibold text-emerald-400">
-                          MATCH
-                        </span>
-                      ) : (
-                        <span className="font-mono text-[11px] font-semibold text-rose-400">
-                          MISMATCH
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="bg-slate-950 font-bold text-slate-200 border-t border-slate-800">
-              <tr>
-                <td className="py-2.5 px-5 text-slate-400 font-sans uppercase text-[11px]">
-                  Total Akumulasi Kata
-                </td>
-                <td className="py-2.5 px-5 text-right text-amber-300 tabular-nums">
-                  {DATASET.totalWords}
-                </td>
-                <td
-                  className={`py-2.5 px-5 text-right tabular-nums ${
-                    cmpResult.mrTotalWords === DATASET.totalWords ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {cmpResult.mrTotalWords}
-                </td>
-                <td
-                  className={`py-2.5 px-5 text-right tabular-nums ${
-                    cmpResult.sparkTotalWords === DATASET.totalWords ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {cmpResult.sparkTotalWords}
-                </td>
-                <td className="py-2.5 px-5 text-center font-sans text-xs">
-                  {cmpResult.isTotalWords1500 ? (
-                    <span className="text-emerald-400">Tepat 1.500 Kata</span>
-                  ) : (
-                    <span className="text-rose-400">Total Tidak Sesuai</span>
-                  )}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </section>
+                    {mrVal !== null ? mrVal : <span className="font-sans text-ink-muted">N/A</span>}
+                  </td>
+                  <td
+                    className={`px-5 py-2.5 text-right tabular-nums ${
+                      spVal === exp ? "text-ok" : "font-bold text-danger"
+                    }`}
+                  >
+                    {spVal !== null ? spVal : <span className="font-sans text-ink-muted">N/A</span>}
+                  </td>
+                  <td
+                    className={`px-5 py-2.5 text-center text-[11px] font-semibold ${
+                      isMatch ? "text-ok" : "text-danger"
+                    }`}
+                  >
+                    {isMatch ? "MATCH" : "MISMATCH"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-line-strong bg-surface-2 font-bold text-ink">
+              <td className="px-5 py-2.5 font-sans text-[11px] uppercase tracking-wider text-ink-muted">
+                Total Akumulasi Kata
+              </td>
+              <td className="px-5 py-2.5 text-right tabular-nums text-ink-soft">{DATASET.totalWords}</td>
+              <td
+                className={`px-5 py-2.5 text-right tabular-nums ${
+                  cmpResult.mrTotalWords === DATASET.totalWords ? "text-ok" : "text-danger"
+                }`}
+              >
+                {cmpResult.mrTotalWords}
+              </td>
+              <td
+                className={`px-5 py-2.5 text-right tabular-nums ${
+                  cmpResult.sparkTotalWords === DATASET.totalWords ? "text-ok" : "text-danger"
+                }`}
+              >
+                {cmpResult.sparkTotalWords}
+              </td>
+              <td className={`px-5 py-2.5 text-center font-sans text-xs ${cmpResult.isTotalWords1500 ? "text-ok" : "text-danger"}`}>
+                {cmpResult.isTotalWords1500 ? "Tepat 1.500 Kata" : "Total Tidak Sesuai"}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </Panel>
 
       {/* Difference Explanations if any */}
       {cmpResult.differences.length > 0 && (
-        <section className="bg-rose-950/20 border border-rose-800/60 rounded-lg p-4">
-          <h4 className="text-xs font-bold text-rose-300 mb-2">
-            Rincian Selisih Komparasi:
-          </h4>
-          <ul className="list-disc list-inside space-y-1 text-xs text-slate-300 font-mono">
+        <section className="rounded-sm border border-danger/40 bg-danger-wash/60 p-4">
+          <h4 className="label-micro mb-2 font-semibold text-danger">Rincian Selisih Komparasi</h4>
+          <ul className="space-y-1.5 text-xs leading-relaxed text-ink-soft">
             {cmpResult.differences.map((diff, idx) => (
-              <li key={idx}>
-                <strong className="text-rose-400">{diff.word}</strong>: {diff.diffExplanation}
+              <li key={idx} className="flex gap-2">
+                <span aria-hidden="true" className="text-danger">
+                  —
+                </span>
+                <span className="font-mono">
+                  <strong className="font-bold text-danger">{diff.word}</strong>: {diff.diffExplanation}
+                </span>
               </li>
             ))}
           </ul>
@@ -395,70 +301,60 @@ export const ValidationTab: React.FC<ValidationProps> = ({ state, onChange }) =>
       )}
 
       {/* Raw Output Inputs with Detailed Diagnostics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* MR Part-r-00000 */}
-        <section
-          className={`border rounded-lg p-4 transition-colors ${
-            isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-          }`}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <div>
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <FileCode className="w-3.5 h-3.5 text-amber-400" />
-                Output MapReduce (part-r-00000)
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+        <section className="panel rounded-sm p-4">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <FieldLabel htmlFor="validation-input-mr">Output MapReduce (part-r-00000)</FieldLabel>
+              <MicroLabel className="mt-1 block">Perintah Acuan</MicroLabel>
+              <p className="mt-0.5 break-all font-mono text-[10.5px] text-ink-muted">
                 docker exec namenode hdfs dfs -cat /user/&lt;NIM&gt;/out_mr/part-r-00000
-              </span>
+              </p>
             </div>
-            <div className="text-right text-[11px] font-mono text-slate-400">
-              {mrDetailed ? (
-                <span className="text-emerald-400">{mrDetailed.totalLines} baris terbaca</span>
-              ) : (
-                <span className="text-slate-500">TIDAK TERBACA</span>
-              )}
-            </div>
+            {mrDetailed ? (
+              <Chip tone="ok" className="tabular-nums">
+                {mrDetailed.totalLines} baris terbaca
+              </Chip>
+            ) : (
+              <Chip tone="neutral">TIDAK TERBACA</Chip>
+            )}
           </div>
           <textarea
+            id="validation-input-mr"
             rows={7}
             value={state.wordCountMR}
             onChange={(e) => handleUpdateMR(e.target.value)}
-            placeholder="hadoop	500&#10;spark	400&#10;hdfs	300&#10;yarn	200&#10;data	100"
-            className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 leading-relaxed"
+            placeholder={"hadoop\t500\nspark\t400\nhdfs\t300\nyarn\t200\ndata\t100"}
+            className="w-full rounded-sm border border-code-line bg-code px-3 py-2.5 font-mono text-xs leading-relaxed text-code-ink placeholder:text-code-muted/50 focus:border-accent focus:outline-none"
           />
         </section>
 
         {/* Spark Part-00000 */}
-        <section
-          className={`border rounded-lg p-4 transition-colors ${
-            isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-          }`}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <div>
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-                Output Spark (part-00000)
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+        <section className="panel rounded-sm p-4">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <FieldLabel htmlFor="validation-input-spark">Output Spark (part-00000)</FieldLabel>
+              <MicroLabel className="mt-1 block">Perintah Acuan</MicroLabel>
+              <p className="mt-0.5 break-all font-mono text-[10.5px] text-ink-muted">
                 docker exec namenode hdfs dfs -cat /user/&lt;NIM&gt;/out_spark/part-00000
-              </span>
+              </p>
             </div>
-            <div className="text-right text-[11px] font-mono text-slate-400">
-              {sparkDetailed ? (
-                <span className="text-emerald-400">{sparkDetailed.totalLines} baris terbaca</span>
-              ) : (
-                <span className="text-slate-500">TIDAK TERBACA</span>
-              )}
-            </div>
+            {sparkDetailed ? (
+              <Chip tone="ok" className="tabular-nums">
+                {sparkDetailed.totalLines} baris terbaca
+              </Chip>
+            ) : (
+              <Chip tone="neutral">TIDAK TERBACA</Chip>
+            )}
           </div>
           <textarea
+            id="validation-input-spark"
             rows={7}
             value={state.wordCountSpark}
             onChange={(e) => handleUpdateSpark(e.target.value)}
-            placeholder="hadoop	500&#10;spark	400&#10;hdfs	300&#10;yarn	200&#10;data	100"
-            className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 leading-relaxed"
+            placeholder={"hadoop\t500\nspark\t400\nhdfs\t300\nyarn\t200\ndata\t100"}
+            className="w-full rounded-sm border border-code-line bg-code px-3 py-2.5 font-mono text-xs leading-relaxed text-code-ink placeholder:text-code-muted/50 focus:border-accent focus:outline-none"
           />
         </section>
       </div>

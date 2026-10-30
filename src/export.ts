@@ -151,7 +151,7 @@ ${state.members.map((m, idx) => `  ${idx + 1}. **${m.nama || "Nama Anggota"}** (
 1. Melakukan provisi klaster big data terdistribusi multi-kontainer (${ENV.containers.length} container) berbasis Docker Compose yang mengintegrasikan Apache Hadoop ${ENV.images.hadoop} dan Apache Spark ${ENV.images.spark}.
 2. Menguji mekanisme replikasi blok HDFS (faktor replikasi = ${ENV.replication}) dengan dataset uji kata berjumlah tepat 1.500 baris.
 3. Menjalankan komputasi WordCount paralel pada Hadoop MapReduce (dikelola YARN) dan Apache Spark (spark-submit pada Spark Standalone Cluster).
-4. Melakukan verifikasi presisi tinggi bahwa hasil agregasi frekuensi kata dari kedua mesin komputasi menghasilkan jumlah identik tanpa selisih.
+4. Memverifikasi bahwa agregasi frekuensi kata dari kedua engine menghasilkan angka yang sama persis (selisih 0).
 
 ---
 

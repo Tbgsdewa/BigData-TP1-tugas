@@ -6,16 +6,12 @@ import {
   RefreshCw,
   UploadCloud,
   DownloadCloud,
-  ExternalLink,
   Copy,
   Check,
   X,
-  Server,
-  Layers,
-  ShieldCheck,
   Activity,
-  KeyRound,
 } from "lucide-react";
+import { Chip, FieldLabel } from "./ui";
 import { MongoStatus, mongoService } from "../services/mongoService";
 import { AppState } from "../types";
 
@@ -125,53 +121,53 @@ export function MongoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="MongoDB Integrator & Sinkronisasi"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-line bg-surface text-ink shadow-xl"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${status?.connected ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/30"}`}>
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-base text-white flex items-center gap-2">
-                MongoDB Integrator & Sinkronisasi
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                  status?.connected
-                    ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                    : "bg-amber-950 text-amber-400 border border-amber-800"
-                }`}>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Database
+              className={`h-4 w-4 shrink-0 ${status?.connected ? "text-ok" : "text-warn"}`}
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-tight text-ink">
+                Sinkronisasi MongoDB
+                <Chip tone={status?.connected ? "ok" : "warn"}>
                   {status?.connected ? "Atlas Connected" : "Local Standby"}
-                </span>
+                </Chip>
               </h3>
-              <p className="text-xs text-slate-400">
-                Penyimpanan persisten tugas praktikum, artefak bukti E01-E16, dan log audit klaster.
+              <p className="mt-0.5 text-xs text-ink-muted">
+                Simpan sesi kerja, bukti E01–E16, dan laporan ke MongoDB Atlas.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="btn btn-ghost shrink-0 !px-2"
+            aria-label="Tutup panel MongoDB"
           >
-            <X className="w-5 h-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm">
-          {/* Status Banner */}
-          <div className={`p-4 rounded-lg border ${
-            status?.connected
-              ? "bg-emerald-950/30 border-emerald-800/60 text-emerald-300"
-              : "bg-slate-800/60 border-slate-700 text-slate-300"
-          }`}>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 font-medium">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 text-sm">
+          {/* Status area */}
+          <div className="rounded-sm border border-line bg-surface p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-ink">
                   {status?.connected ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-amber-400" />
+                    <AlertCircle className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
                   )}
                   <span>
                     {status?.connected
@@ -179,73 +175,86 @@ export function MongoModal({
                       : "Mode Standby Lokal (Menunggu MONGODB_URI)"}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs leading-relaxed text-ink-muted">
                   {status?.connected
-                    ? `Latensi ping klaster: ${status.pingMs}ms. Semua data langsung terinkorporasi ke cloud.`
-                    : "Aplikasi berjalan normal dengan penyimpanan memori server & browser. Hubungkan ke MongoDB Atlas untuk persistensi jangka panjang."}
+                    ? `Ping ${status.pingMs}ms. Perubahan tersimpan langsung ke cloud.`
+                    : "Aplikasi tetap berjalan dengan penyimpanan lokal browser. Hubungkan Atlas untuk persistensi cloud."}
                 </p>
               </div>
               <button
+                type="button"
                 onClick={onRefreshStatus}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 transition-colors"
+                className="btn btn-outline !px-2 !py-1 font-mono !text-[11px]"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" />
                 Cek Ping
               </button>
             </div>
 
-            {/* Collection Counters */}
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-700/60 text-center font-mono">
-              <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
-                <div className="text-xs text-slate-400">sessions</div>
-                <div className="text-lg font-bold text-white tabular-nums">{status?.counts.sessions || 0}</div>
+            {/* Collection counters (angka riil dari status) */}
+            <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3 text-center sm:grid-cols-4">
+              <div className="rounded-sm border border-line bg-surface-2 px-2 py-2">
+                <dt className="label-micro">sessions</dt>
+                <dd className="mt-1 font-mono text-lg font-bold tabular-nums text-ink">
+                  {status?.counts.sessions || 0}
+                </dd>
               </div>
-              <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
-                <div className="text-xs text-slate-400">evidence</div>
-                <div className="text-lg font-bold text-white tabular-nums">{status?.counts.evidence || 0}</div>
+              <div className="rounded-sm border border-line bg-surface-2 px-2 py-2">
+                <dt className="label-micro">evidence</dt>
+                <dd className="mt-1 font-mono text-lg font-bold tabular-nums text-ink">
+                  {status?.counts.evidence || 0}
+                </dd>
               </div>
-              <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
-                <div className="text-xs text-slate-400">reports</div>
-                <div className="text-lg font-bold text-white tabular-nums">{status?.counts.reports || 0}</div>
+              <div className="rounded-sm border border-line bg-surface-2 px-2 py-2">
+                <dt className="label-micro">reports</dt>
+                <dd className="mt-1 font-mono text-lg font-bold tabular-nums text-ink">
+                  {status?.counts.reports || 0}
+                </dd>
               </div>
-              <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
-                <div className="text-xs text-slate-400">ping</div>
-                <div className="text-lg font-bold text-emerald-400 tabular-nums">
+              <div className="rounded-sm border border-line bg-surface-2 px-2 py-2">
+                <dt className="label-micro">ping</dt>
+                <dd
+                  className={`mt-1 font-mono text-lg font-bold tabular-nums ${
+                    status?.connected ? "text-ok" : "text-ink-muted"
+                  }`}
+                >
                   {status?.connected ? `${status.pingMs}ms` : "-"}
-                </div>
+                </dd>
               </div>
-            </div>
+            </dl>
           </div>
 
           {/* Sync Actions */}
-          <div className="bg-slate-800/40 p-4 rounded-lg border border-slate-700 space-y-3">
-            <h4 className="font-semibold text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2">
-              <UploadCloud className="w-4 h-4 text-cyan-400" />
+          <div className="space-y-3 rounded-sm border border-line bg-surface-2 p-4">
+            <h4 className="label-micro flex items-center gap-2 !text-ink-soft">
+              <UploadCloud className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               Aksi Sinkronisasi Data
             </h4>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
+                type="button"
                 onClick={handlePushToCloud}
                 disabled={isSyncing}
-                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg shadow-sm transition-colors"
+                className="btn btn-primary"
               >
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="h-3.5 w-3.5" />
                 {isSyncing ? "Menyinkronkan..." : "Simpan / Push ke MongoDB"}
               </button>
               <button
+                type="button"
                 onClick={handlePullFromCloud}
                 disabled={isSyncing}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 text-xs font-medium rounded-lg border border-slate-600 transition-colors"
+                className="btn btn-outline"
               >
-                <DownloadCloud className="w-4 h-4" />
+                <DownloadCloud className="h-3.5 w-3.5" />
                 Tarik / Pull dari MongoDB
               </button>
-              <label className="flex items-center gap-2 text-xs text-slate-300 ml-auto cursor-pointer">
+              <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
                 <input
                   type="checkbox"
                   checked={autoSync}
                   onChange={(e) => onToggleAutoSync(e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-600 text-cyan-600 focus:ring-0"
+                  className="h-4 w-4 accent-accent"
                 />
                 Auto-sync setiap ada perubahan
               </label>
@@ -255,49 +264,59 @@ export function MongoModal({
           {/* Feedback Message */}
           {syncFeedback && (
             <div
-              className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+              role="status"
+              className={`flex items-center gap-2 rounded-sm border p-3 text-xs ${
                 syncFeedback.type === "success"
-                  ? "bg-emerald-950/50 border border-emerald-800 text-emerald-300"
-                  : "bg-rose-950/50 border border-rose-800 text-rose-300"
+                  ? "border-ok/40 bg-ok-wash text-ok"
+                  : "border-danger/40 bg-danger-wash text-danger"
               }`}
             >
               {syncFeedback.type === "success" ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
               ) : (
-                <AlertCircle className="w-4 h-4 shrink-0" />
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               )}
               <span>{syncFeedback.message}</span>
             </div>
           )}
 
           {/* Connect Live via UI */}
-          <div className="bg-slate-800/40 p-4 rounded-lg border border-slate-700 space-y-3">
-            <h4 className="font-semibold text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-amber-400" />
+          <div className="space-y-3 rounded-sm border border-line bg-surface-2 p-4">
+            <h4 className="label-micro flex items-center gap-2 !text-ink-soft">
+              <Activity className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               Uji Sambungan MongoDB Atlas Baru
             </h4>
             <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="mongodb+srv://username:password@cluster.mongodb.net/..."
-                value={customUri}
-                onChange={(e) => setCustomUri(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-hidden focus:border-cyan-500"
-              />
-              <div className="flex gap-2">
+              <div>
+                <FieldLabel htmlFor="mongo-connection-uri">Connection String (MONGODB_URI)</FieldLabel>
                 <input
+                  id="mongo-connection-uri"
                   type="text"
-                  placeholder="Nama Database (default: bigdata_tp1)"
-                  value={dbName}
-                  onChange={(e) => setDbName(e.target.value)}
-                  className="w-1/2 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-hidden focus:border-cyan-500"
+                  placeholder="mongodb+srv://username:password@cluster.mongodb.net/..."
+                  value={customUri}
+                  onChange={(e) => setCustomUri(e.target.value)}
+                  className="field field-mono"
                 />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="sm:w-1/2">
+                  <FieldLabel htmlFor="mongo-db-name">Nama Database</FieldLabel>
+                  <input
+                    id="mongo-db-name"
+                    type="text"
+                    placeholder="Nama Database (default: bigdata_tp1)"
+                    value={dbName}
+                    onChange={(e) => setDbName(e.target.value)}
+                    className="field field-mono"
+                  />
+                </div>
                 <button
+                  type="button"
                   onClick={handleTestConnect}
                   disabled={isConnecting}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium rounded transition-colors"
+                  className="btn btn-primary sm:flex-1"
                 >
-                  <Activity className="w-3.5 h-3.5" />
+                  <Activity className="h-3.5 w-3.5" />
                   {isConnecting ? "Menghubungkan..." : "Tes & Hubungkan"}
                 </button>
               </div>
@@ -305,33 +324,36 @@ export function MongoModal({
           </div>
 
           {/* Deployment Configuration Info */}
-          <div className="border border-slate-800 bg-slate-950/50 p-4 rounded-lg space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-300">Format Environment Variable (.env & Vercel):</span>
+          <div className="code-block space-y-2 !p-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-code-line bg-code-2 px-3 py-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-code-muted">
+                Format Environment Variable (.env &amp; Vercel):
+              </span>
               <button
+                type="button"
                 onClick={handleCopySample}
-                className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300"
+                className="btn !border-code-line !bg-transparent !px-2 !py-1 font-mono !text-[11px] !text-code-muted hover:!text-code-ink"
               >
-                {copiedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedKey ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copiedKey ? "Tersalin" : "Salin Contoh"}
               </button>
             </div>
-            <pre className="p-2.5 bg-slate-900 border border-slate-800 rounded font-mono text-[11px] text-slate-300 overflow-x-auto">
+            <div className="space-y-2 px-3 py-2.5">
+              <pre className="overflow-x-auto font-mono text-[11.5px] leading-relaxed text-code-ink">
 {`MONGODB_URI="${sampleConnectionString}"
 MONGODB_DB_NAME="bigdata_tp1"`}
-            </pre>
-            <p className="text-[11px] text-slate-400">
-              Di Vercel: Masuk ke <strong>Settings &rarr; Environment Variables</strong>, tambahkan <code>MONGODB_URI</code> dengan URI dari MongoDB Atlas Anda.
-            </p>
+              </pre>
+              <p className="font-sans text-[11px] leading-relaxed text-code-muted">
+                Di Vercel: Masuk ke <strong className="text-code-ink">Settings &rarr; Environment Variables</strong>,
+                tambahkan <code className="text-code-ink">MONGODB_URI</code> dengan URI dari MongoDB Atlas Anda.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition-colors"
-          >
+        <div className="flex shrink-0 justify-end border-t border-line px-5 py-3">
+          <button type="button" onClick={onClose} className="btn btn-outline">
             Tutup
           </button>
         </div>

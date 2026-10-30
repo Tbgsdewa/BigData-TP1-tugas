@@ -1,31 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import {
-  Video,
-  Clock,
-  User,
-  Play,
-  Pause,
-  RotateCcw,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
-  Copy,
-  Check,
-  Award,
-  FileText,
-  Download,
-  Terminal,
-  Monitor,
-  Volume2,
-  Users,
-  AlertCircle,
-  RefreshCw,
-  ExternalLink,
-  Sliders,
-  Radio,
-  Tv,
-} from "lucide-react";
-import { VIDEO_SEGMENTS } from "../constants";
+import { Chip, CopyButton, EmptyState, MicroLabel, Panel, SegButton } from "../components/ui";
 import { AppState } from "../types";
 
 interface VideoProps {
@@ -68,6 +42,36 @@ interface RehearsalTake {
   notes: string;
 }
 
+const takeVerdictTone: Record<RehearsalTake["verdict"], "ok" | "warn" | "danger"> = {
+  PASS: "ok",
+  WARN: "warn",
+  PENALTY: "danger",
+};
+
+/** Baris perintah CLI — gaya blok terminal (selalu gelap), dengan salin. */
+const CliLine: React.FC<{ cmd: string; copied: boolean; onCopy: () => void }> = ({
+  cmd,
+  copied,
+  onCopy,
+}) => (
+  <div className="flex items-start justify-between gap-2 rounded-sm border border-code-line bg-code px-2.5 py-1.5">
+    <code className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-code-ink">
+      {cmd}
+    </code>
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label="Salin perintah"
+      title="Salin perintah"
+      className={`shrink-0 rounded-sm px-1 py-0.5 font-mono text-[10px] transition-colors ${
+        copied ? "text-code-ink" : "text-code-muted hover:text-code-ink"
+      }`}
+    >
+      {copied ? "Tersalin" : "Salin"}
+    </button>
+  </div>
+);
+
 export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
   const [elapsedSec, setElapsedSec] = useState<number>(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -83,32 +87,11 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
         return [];
       }
     }
-    return [
-      {
-        id: "take-init-1",
-        timestamp: new Date(Date.now() - 3600000).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        durationSec: 442, // 07:22
-        verdict: "WARN",
-        notes: "Uji coba awal: bagian MapReduce dan Spark sedikit berlarut-larut.",
-      },
-      {
-        id: "take-init-2",
-        timestamp: new Date(Date.now() - 1800000).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        durationSec: 428, // 07:08
-        verdict: "PASS",
-        notes: "Pacing optimal: transisi lancar, seluruh Web UI terliput, durasi di bawah target 07:15.",
-      },
-    ];
+    return [];
   });
   const [takeNoteInput, setTakeNoteInput] = useState<string>("");
 
-  const nimPlaceholder = state.members[0]?.nim || "24060122140123";
+  const nimPlaceholder = state.members[0]?.nim || "<NIM>";
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Rehearsal timer tick with speed multiplier
@@ -133,8 +116,6 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
       // ignore
     }
   }, [takes]);
-
-  const isDark = state.theme === "dark";
 
   const targetSec = 7 * 60 + 15; // 07:15 = 435s
   const maxSec = 8 * 60; // 08:00 = 480s
@@ -173,16 +154,16 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           "docker compose version",
           "wsl --status # (atau free -h di Linux/WSL)",
         ],
-        spokenScript: `Selamat pagi/siang Bapak/Ibu dosen dan asisten praktikum. Kami dari kelompok praktikum mempresentasikan implementasi klaster Big Data Apache Hadoop dan Apache Spark terintegrasi pada lingkungan Docker. Anggota tim kami: ${
+        spokenScript: `Selamat pagi/siang Bapak/Ibu dosen dan asisten praktikum. Kelompok kami mengerjakan Tugas Pemantapan 1: membangun dan memverifikasi klaster Hadoop dan Spark dengan Docker. Anggota dan pembagiannya: ${
           state.members
-            .map((m, i) => `${m.nama || `Mahasiswa ${i + 1}`} (${m.nim || "NIM"}) selaku penanggung jawab ${m.porsi}`)
+            .map((m, i) => `${m.nama || `Mahasiswa ${i + 1}`} (${m.nim || "NIM"}), ${m.porsi}`)
             .join(", ")
-        }. Arsitektur klaster kami terdiri dari 8 kontainer terisolasi: 1 NameNode, 2 DataNode, 1 YARN ResourceManager, 1 NodeManager, 1 Spark Master, dan 2 Spark Worker. Seluruh kontainer dialokasikan pada bridge network khusus dengan batas sumber daya host 8 GB RAM dan 4 vCPU.`,
+        }. Topologi kami delapan kontainer dalam satu bridge network: 1 NameNode, 2 DataNode, 1 ResourceManager, 1 NodeManager, 1 Spark Master, 2 Spark Worker. Host-nya Docker Desktop di WSL2, alokasi sumber daya mengikuti pengaturan Resources.`,
         rubricFocus: "Identitas lengkap anggota, kejelasan alokasi peran, arsitektur 8 kontainer.",
       },
       {
         id: "S2",
-        title: "Orkestrasasi Docker Compose & Status Kontainer",
+        title: "Docker Compose & Status Kontainer",
         durSec: 60,
         timeRange: "0:45 - 1:45",
         leadRole: "Docker & HDFS",
@@ -195,12 +176,12 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           "docker compose up -d",
           'docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"',
         ],
-        spokenScript: `Pada tahap penyiapan, kami mengeksekusi 'docker compose up -d'. Layanan diorkestrasi secara berurutan dengan konfigurasi environment terpadu dari file config. Perhatikan keluaran perintah 'docker ps': seluruh 8 kontainer saat ini berstatus 'Up' tanpa adanya restart loop. Port binding kunci mencakup port 9870 untuk Web UI NameNode, port 8088 untuk YARN ResourceManager, port 8080 untuk Spark Master, serta port IPC 8020 dan 7077 telah terikat secara tepat ke host lokal.`,
+        spokenScript: `Kami jalankan 'docker compose up -d'. Lihat keluaran 'docker ps': delapan kontainer berstatus Up, tidak ada yang restart berulang. Port yang terikat ke host: 9870 untuk NameNode UI, 8088 untuk YARN, 8080 sampai 8082 untuk Spark, serta 8020 dan 7077 untuk RPC.`,
         rubricFocus: "8 kontainer Up tanpa crashloop, port binding tepat, bukan terminal mock.",
       },
       {
         id: "S3",
-        title: "Verifikasi Integritas HDFS, Replikasi & Dataset Uji",
+        title: "Verifikasi HDFS, Replikasi & Dataset Uji",
         durSec: 75,
         timeRange: "1:45 - 3:00",
         leadRole: "Docker & HDFS",
@@ -217,14 +198,14 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           `docker exec namenode hdfs dfs -mkdir -p /user/${nimPlaceholder}/input`,
           `docker exec namenode hdfs fsck /user/${nimPlaceholder}/input/words.txt -files -blocks -locations`,
         ],
-        spokenScript: `Memasuki pengujian HDFS, kami memastikan Safe Mode NameNode telah berada pada kondisi 'OFF'. Selanjutnya, perintah 'hdfs dfsadmin -report' membuktikan klaster memiliki 2 Live DataNodes yang terhubung secara sinkron. Kami membuat direktori kerja HDFS '/user/${nimPlaceholder}/input' dan mengunggah dataset acuan 'words.txt' berukuran tepat 1.500 baris. Melalui eksekusi 'hdfs fsck', sistem mengonfirmasi status file adalah HEALTHY dengan rata-rata replikasi blok tepat 2.0. Kami juga menunjukkan Web UI NameNode pada port 9870 yang mengonfirmasi direktori dan kedua DataNode aktif.`,
+        spokenScript: `Kami cek safemode: statusnya OFF. 'hdfs dfsadmin -report' menampilkan dua DataNode live. Dataset 'words.txt' kami unggah ke /user/${nimPlaceholder}/input; 'wc -l' mengonfirmasi 1.500 baris. 'hdfs fsck' pada file itu mengembalikan HEALTHY dengan replikasi blok 2.0. Di NameNode UI port 9870, tab Datanodes menampilkan hasil yang sama.`,
         rubricFocus: "Safe mode OFF, 2 Live DataNodes, FSCK HEALTHY replikasi 2, dataset 1.500 baris, Web UI 9870.",
         uiTargetUrl: "http://localhost:9870",
         uiTargetName: "NameNode Web UI (Port 9870)",
       },
       {
         id: "S4",
-        title: "Eksekusi Hadoop MapReduce & Monitoring YARN",
+        title: "Eksekusi MapReduce di YARN",
         durSec: 75,
         timeRange: "3:00 - 4:15",
         leadRole: "MapReduce & YARN",
@@ -239,7 +220,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           `docker exec namenode hdfs dfs -cat /user/${nimPlaceholder}/out_mr/part-r-00000`,
           "docker exec resourcemanager yarn application -list -appStates ALL",
         ],
-        spokenScript: `Selanjutnya kami mengeksekusi komputasi MapReduce bawaan Hadoop dengan argumen direktori input dan output '/user/${nimPlaceholder}/out_mr'. Proses pemetaan (Map) dan agregasi (Reduce) diatur oleh YARN ResourceManager. Pada Web UI YARN port 8088, terlihat Application ID dialokasikan ke NodeManager dan bertransisi dari RUNNING menjadi FINISHED dengan FinalStatus SUCCEEDED. Hasil reduksi pada file 'part-r-00000' menampilkan agregasi 5 kata acuan dengan format kata<TAB>frekuensi tanpa ada baris data yang cacat.`,
+        spokenScript: `Job wordcount bawaan Hadoop kami jalankan dengan input /user/${nimPlaceholder}/input dan output /user/${nimPlaceholder}/out_mr. Progress map dan reduce terlihat di terminal sampai selesai. Di YARN UI port 8088, aplikasi bergeser dari RUNNING ke FINISHED dengan FinalStatus SUCCEEDED. 'part-r-00000' berisi lima kata acuan, formatnya kata TAB frekuensi.`,
         rubricFocus: "Log MapReduce sukses, YARN UI 8088 terbukti SUCCEEDED, output part-r-00000 5 kata acuan.",
         uiTargetUrl: "http://localhost:8088",
         uiTargetName: "YARN ResourceManager (Port 8088)",
@@ -262,14 +243,14 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           "echo $? # (PowerShell: $LASTEXITCODE)",
           `docker exec namenode hdfs dfs -cat /user/${nimPlaceholder}/out_spark/part-00000`,
         ],
-        spokenScript: `Sekarang beralih ke komputasi Apache Spark Standalone. Skrip 'wc.py' membaca file langsung dari HDFS melalui protokol RPC 'hdfs://namenode:8020'. Kami mengirimkan tugas komputasi menggunakan 'spark-submit' dengan flag spesifik: master 'spark://spark-master:7077', executor memory dibatasi '512m', serta 2 total executor cores. Proses eksekusi selesai dengan exit code 0. Di Web UI Spark Master port 8080, aplikasi 'TP1-WordCount' tercatat berstatus FINISHED. File output 'part-00000' berhasil dibuat di HDFS out_spark dengan struktur agregasi RDD in-memory yang sangat cepat.`,
+        spokenScript: `Untuk Spark, skrip 'wc.py' membaca langsung dari hdfs://namenode:8020. 'spark-submit' kami arahkan ke spark://spark-master:7077, mode client, --executor-memory 512m, --total-executor-cores 2. Exit code bernilai 0. Spark Master UI port 8080 menampilkan aplikasi TP1-WordCount berstatus FINISHED, dan 'part-00000' terbentuk di direktori out_spark.`,
         rubricFocus: "Flag memori 512m & core 2 dijelaskan lisan, exit code 0, Web UI Spark 8080, part-00000 terbentuk.",
         uiTargetUrl: "http://localhost:8080",
         uiTargetName: "Spark Master Web UI (Port 8080)",
       },
       {
         id: "S6",
-        title: "Komparasi, Validasi Paritas Output & Analisis Kinerja",
+        title: "Komparasi MR vs Spark",
         durSec: 60,
         timeRange: "5:45 - 6:45",
         leadRole: "Validasi & laporan",
@@ -282,7 +263,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           `docker exec namenode hdfs dfs -cat /user/${nimPlaceholder}/out_mr/part-r-00000`,
           `docker exec namenode hdfs dfs -cat /user/${nimPlaceholder}/out_spark/part-00000`,
         ],
-        spokenScript: `Pada tahap validasi komparatif, kami membuktikan paritas absolut antara Hadoop MapReduce dan Apache Spark. Untuk kelima kata acuan: kata pertama, kedua, hingga kelima, frekuensi kemunculan keduanya identik persis dengan selisih 0. Akumulasi total kata adalah tepat 1.500 kata sesuai ukuran dataset input. Dari aspek performa, Apache Spark menyelesaikan tugas secara signifikan lebih cepat berkat manipulasi RDD dalam memori (in-memory) tanpa overhead penulisan berkas perantara ke disk lokal pada tahap shuffle seperti halnya MapReduce konvensional.`,
+        spokenScript: `Kami bandingkan 'part-r-00000' hasil MapReduce dengan 'part-00000' hasil Spark, baris per baris. Lima kata acuan punya frekuensi yang sama persis, selisih nol, total 1.500 kata sesuai dataset. Pada ukuran ini Spark selesai lebih cepat karena RDD diolah di memori, sedangkan MapReduce menulis hasil antara ke disk saat shuffle.`,
         rubricFocus: "100% data parity, selisih 0, total 1.500 kata exact, analisis trade-off komputasi.",
       },
       {
@@ -297,7 +278,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
           "Timer rekaman OBS menunjukkan durasi di bawah batas 07:15 (maksimal 08:00)",
         ],
         cliCommands: [],
-        spokenScript: `Sebagai kesimpulan, implementasi klaster hibrida Hadoop dan Spark berhasil dibangun dan berfungsi 100% tanpa anomali. Terkait integritas akademik, kami mendeklarasikan penggunaan asisten AI sebatas penelusuran sintaksis dan template skrip yang seluruhnya telah kami uji dan verifikasi keabsahannya secara langsung pada klaster terminal nyata. Durasi video ini berada dalam koridor waktu yang ditentukan di bawah 07:15. Terima kasih atas perhatian Bapak/Ibu dosen dan asisten praktikum.`,
+        spokenScript: `Kesimpulannya: klaster berjalan dan kedua engine menghasilkan output yang sama. Sesuai lembar disclosure, tools AI hanya kami pakai untuk penelusuran sintaks dan template; semua perintah di video ini dieksekusi di terminal nyata dan kami cek hasilnya langsung. Durasi rekaman ini di bawah 07:15. Terima kasih kepada Bapak/Ibu dosen dan asisten praktikum.`,
         rubricFocus: "Refleksi teknis, transparansi AI jujur, durasi tepat <= 07:15 (maks 08:00).",
       },
     ],
@@ -427,6 +408,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
       return {
         member,
         assignedCount: assignedSegs.length,
+        assignedSegIds: assignedSegs.map((s) => s.id),
         totalSec,
         percentage,
       };
@@ -488,51 +470,52 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
     return segmentDetails.filter((s) => s.id === activeFilterId);
   }, [segmentDetails, activeFilterId]);
 
-  return (
-    <div className="space-y-6">
-      {/* Header Info Banner */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 uppercase tracking-wider">
-                Bagian 7
-              </span>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Video className="w-5 h-5 text-indigo-400" />
-                Latihan & Orkestrasasi Video Walkthrough Klaster
-              </h2>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Panduan produksi video akademik 7 segmen dengan simulasi timer teleprompter,
-              alokasi beban bicara anggota kelompok, dan naskah teknis terverifikasi rubrik.
-            </p>
-          </div>
+  const checklistDone = Object.values(state.videoChecklist).filter(Boolean).length;
 
-          <div className="flex flex-wrap items-center gap-2">
+  const checklistItems: Array<{
+    field: keyof typeof state.videoChecklist;
+    title: string;
+    desc: string;
+  }> = [
+    {
+      field: "terminalReal",
+      title: "Terminal Nyata (Bukan Mock)",
+      desc: "Rekam eksekusi CLI asli di terminal WSL2/PowerShell, bukan tayangan slide animasi atau rekaan log.",
+    },
+    {
+      field: "bukanSlideSaja",
+      title: "Tampilkan Browser Web UI",
+      desc: "Buka tab browser nyata untuk NameNode (9870), YARN RM (8088), dan Spark Master (8080).",
+    },
+    {
+      field: "tiapAnggotaTampil",
+      title: "Seluruh Anggota Berbicara",
+      desc: "Setiap anggota kelompok memaparkan bagian masing-masing secara bergiliran dengan suara jernih.",
+    },
+    {
+      field: "tanpaKredensial",
+      title: "Bebas Kredensial Pribadi",
+      desc: "Layar bersih dari password, token API rahasia, path sensitif, atau file pribadi di terminal.",
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* 7 — Video Walkthrough: header + fakta batasan teknis */}
+      <Panel
+        no="7"
+        title="Latihan Video Walkthrough"
+        sub="Rundown 7 segmen, timer gladi resik, dan pembagian bicara anggota."
+        actions={
+          <>
             <button
               type="button"
               onClick={() => handleCopy(fullScriptMarkdown, "full-script")}
-              className="px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-mono font-medium flex items-center gap-1.5 transition-colors"
               title="Salin seluruh naskah dan rundown untuk prompter OBS"
+              className={`btn btn-outline font-mono ${copiedKey === "full-script" ? "!border-ok/60 !text-ok" : ""}`}
             >
-              {copiedKey === "full-script" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Naskah Disalin</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Salin Naskah Lengkap</span>
-                </>
-              )}
+              {copiedKey === "full-script" ? "Naskah Disalin" : "Salin Naskah Lengkap"}
             </button>
-
             <button
               type="button"
               onClick={() => {
@@ -544,604 +527,434 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
                 a.click();
                 URL.revokeObjectURL(url);
               }}
-              className="px-3 py-1.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-700/60 text-xs font-mono font-medium flex items-center gap-1.5 transition-colors"
+              className="btn btn-primary font-mono"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Unduh .MD</span>
+              Unduh .MD
             </button>
-          </div>
-        </div>
-
-        {/* Technical Constraints Overview */}
-        <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-2.5 rounded bg-slate-950/70 border border-slate-800/70">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Target Waktu</span>
-            <span className="text-sm font-bold font-mono text-emerald-400 tabular-nums">07:15</span>
-            <span className="text-[10px] text-slate-400 block">435 detik ideal</span>
-          </div>
-
-          <div className="p-2.5 rounded bg-slate-950/70 border border-slate-800/70">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Batas Maksimal</span>
-            <span className="text-sm font-bold font-mono text-amber-400 tabular-nums">08:00</span>
-            <span className="text-[10px] text-slate-400 block">&gt;08:00 penalti LMS</span>
-          </div>
-
-          <div className="p-2.5 rounded bg-slate-950/70 border border-slate-800/70">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Jumlah Segmen</span>
-            <span className="text-sm font-bold font-mono text-indigo-300">7 Segmen</span>
-            <span className="text-[10px] text-slate-400 block">Wajib urut & runtut</span>
-          </div>
-
-          <div className="p-2.5 rounded bg-slate-950/70 border border-slate-800/70">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Kamera & Suara</span>
-            <span className="text-sm font-bold font-mono text-cyan-400">Semua Anggota</span>
-            <span className="text-[10px] text-slate-400 block">Wajib berbicara lisan</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Rehearsal Studio & Teleprompter Pacer */}
-      <section
-        className={`border rounded-lg p-5 transition-colors relative overflow-hidden ${
-          isDark ? "bg-[#0b101c] border-slate-800" : "bg-white border-slate-200"
-        }`}
+          </>
+        }
       >
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-slate-800/80">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400">
-                Pacer Studio & Rehearsal Clock
-              </span>
-            </div>
-            <div className="flex flex-wrap items-baseline gap-3">
+            <dt className="label-micro">Target Waktu</dt>
+            <dd className="mt-1 font-mono text-sm font-bold tabular-nums text-ink">07:15</dd>
+            <dd className="font-mono text-[10px] text-ink-muted">435 detik ideal</dd>
+          </div>
+          <div>
+            <dt className="label-micro">Batas Maksimal</dt>
+            <dd className="mt-1 font-mono text-sm font-bold tabular-nums text-warn">08:00</dd>
+            <dd className="font-mono text-[10px] text-ink-muted">&gt;08:00 penalti LMS</dd>
+          </div>
+          <div>
+            <dt className="label-micro">Jumlah Segmen</dt>
+            <dd className="mt-1 font-mono text-sm font-bold text-ink">7 Segmen</dd>
+            <dd className="font-mono text-[10px] text-ink-muted">Wajib urut &amp; runtut</dd>
+          </div>
+          <div>
+            <dt className="label-micro">Kamera &amp; Suara</dt>
+            <dd className="mt-1 font-mono text-sm font-bold text-ink">Semua Anggota</dd>
+            <dd className="font-mono text-[10px] text-ink-muted">Wajib berbicara lisan</dd>
+          </div>
+        </dl>
+      </Panel>
+
+      {/* Pacer rehearsal: timer, kontrol, progres segmen, teleprompter aktif */}
+      <Panel
+        title="Pacer Latihan"
+        sub="Timer gladi resik; teleprompter mengikuti segmen aktif."
+      >
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          {/* Timer utama */}
+          <div className="min-w-0">
+            <div className="mb-1.5 flex items-center gap-2">
               <span
-                className={`text-4xl font-mono font-bold tracking-tight tabular-nums ${
+                aria-hidden="true"
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  isRunning ? "animate-pulse bg-danger" : "bg-line-strong"
+                }`}
+              />
+              <MicroLabel>Rehearsal Clock</MicroLabel>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+              <span
+                className={`font-mono text-5xl font-bold tracking-tight tabular-nums ${
                   timerStatus === "OVERDUE"
-                    ? "text-rose-400"
+                    ? "text-danger"
                     : timerStatus === "WARNING"
-                    ? "text-amber-400"
-                    : "text-white"
+                    ? "text-warn"
+                    : "text-ink"
                 }`}
               >
                 {formatTime(elapsedSec)}
               </span>
-
-              <div className="text-xs font-mono text-slate-400">
-                <span>/ Target 07:15</span>
-                <span className="text-slate-600 mx-1.5">|</span>
-                <span className="text-amber-500">Max 08:00</span>
-              </div>
-
-              <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${
+              <span className="font-mono text-xs text-ink-muted">
+                / Target 07:15 <span className="mx-1 text-line-strong">|</span>{" "}
+                <span className="text-warn">Max 08:00</span>
+              </span>
+              <Chip
+                tone={
                   timerStatus === "STANDBY"
-                    ? "bg-slate-900 text-slate-400 border-slate-800"
+                    ? "neutral"
                     : timerStatus === "ON_TRACK"
-                    ? "bg-emerald-950 text-emerald-300 border-emerald-800"
+                    ? "ok"
                     : timerStatus === "WARNING"
-                    ? "bg-amber-950 text-amber-300 border-amber-800"
-                    : "bg-rose-950 text-rose-300 border-rose-800 animate-pulse"
-                }`}
+                    ? "warn"
+                    : "danger"
+                }
+                className={timerStatus === "OVERDUE" ? "animate-pulse" : ""}
               >
                 {timerStatus === "STANDBY" && "Standby / Siap Latihan"}
                 {timerStatus === "ON_TRACK" && "Dalam Target (Aman)"}
                 {timerStatus === "WARNING" && "Zona Peringatan (07:15 - 08:00)"}
                 {timerStatus === "OVERDUE" && "Melebihi Batas LMS (Penalti Nilai)"}
-              </span>
+              </Chip>
             </div>
           </div>
 
-          {/* Controls toolbar */}
+          {/* Kontrol pacer */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Speed selection */}
-            <div className="flex items-center bg-slate-950 border border-slate-800 rounded p-0.5 text-xs font-mono">
-              <span className="text-[10px] text-slate-500 px-2 flex items-center gap-1">
-                <Sliders className="w-3 h-3" /> Kecepatan:
-              </span>
+            <div className="flex items-center gap-1.5">
+              <MicroLabel>Kecepatan:</MicroLabel>
               {[1, 1.25, 1.5].map((spd) => (
-                <button
+                <SegButton
                   key={spd}
-                  type="button"
+                  active={playbackSpeed === spd}
                   onClick={() => setPlaybackSpeed(spd)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
-                    playbackSpeed === spd
-                      ? "bg-indigo-600 text-white"
-                      : "text-slate-400 hover:text-white"
-                  }`}
                 >
                   {spd}x
-                </button>
+                </SegButton>
               ))}
             </div>
-
-            {/* Play/Pause */}
             {!isRunning ? (
               <button
                 type="button"
                 onClick={() => setIsRunning(true)}
-                className="px-3.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+                className="btn btn-primary font-mono"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Mulai Rehearsal</span>
+                Mulai Rehearsal
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setIsRunning(false)}
-                className="px-3.5 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+                className="btn btn-primary font-mono"
               >
-                <Pause className="w-3.5 h-3.5 fill-current" />
-                <span>Jeda Pacer</span>
+                Jeda Pacer
               </button>
             )}
-
-            {/* Reset */}
             <button
               type="button"
               onClick={() => {
                 setIsRunning(false);
                 setElapsedSec(0);
               }}
-              className="px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium flex items-center gap-1.5 transition-colors"
+              className="btn btn-outline font-mono"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset</span>
+              Reset
             </button>
-
-            {/* Simpan Take */}
             <button
               type="button"
               onClick={handleRecordTake}
               disabled={elapsedSec === 0}
-              className={`px-3 py-1.5 rounded text-xs font-mono font-medium flex items-center gap-1.5 transition-colors ${
-                elapsedSec > 0
-                  ? "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800"
-                  : "bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
-              }`}
+              className="btn btn-outline font-mono"
             >
-              <Tv className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Catat Take ({formatTime(elapsedSec)})</span>
+              Catat Take ({formatTime(elapsedSec)})
             </button>
           </div>
         </div>
 
-        {/* Global Progress Bar with Segments Division */}
-        <div className="mt-4 space-y-2">
-          <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800 relative flex">
-            {/* Visual breakdown per segment proportional */}
+        {/* Progres segmen global */}
+        <div className="mt-5 space-y-2">
+          <MicroLabel>Peta Progres 7 Segmen</MicroLabel>
+          <div className="flex h-7 w-full overflow-hidden rounded-sm border border-line bg-surface-2">
             {segmentDetails.map((seg, idx) => {
               const segPct = (seg.durSec / maxSec) * 100;
-              const isPast = activeSegmentTiming.end > seg.durSec; // rough
               return (
                 <div
                   key={seg.id}
                   style={{ width: `${segPct}%` }}
-                  className={`h-full border-r border-slate-950 text-[9px] font-mono text-center flex items-center justify-center transition-colors ${
-                    idx === currentSegmentIndex
-                      ? "bg-indigo-600 text-white font-bold"
-                      : idx < currentSegmentIndex
-                      ? "bg-indigo-950/80 text-indigo-400/60"
-                      : "bg-slate-900/60 text-slate-600"
-                  }`}
                   title={`${seg.id}: ${seg.title} (${seg.timeRange})`}
+                  className={`flex items-center justify-center border-r border-line font-mono text-[9px] last:border-r-0 ${
+                    idx === currentSegmentIndex
+                      ? "bg-accent font-bold text-accent-ink"
+                      : idx < currentSegmentIndex
+                      ? "bg-accent-wash text-accent"
+                      : "bg-surface-2 text-ink-muted"
+                  }`}
                 >
-                  <span className="hidden sm:inline">{seg.id}</span>
+                  {seg.id}
                 </div>
               );
             })}
           </div>
-
-          <div className="flex justify-between items-center text-[10px] font-mono text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[10px] text-ink-muted">
             <span>00:00 (Mulai)</span>
-            <span className="text-indigo-400">
-              Segmen Aktif: <strong>{activeSegment.id}</strong> ({formatTime(activeSegmentTiming.segElapsed)} / {activeSegment.durSec}s)
+            <span className="text-accent">
+              Segmen Aktif: <strong>{activeSegment.id}</strong> ({formatTime(activeSegmentTiming.segElapsed)} /{" "}
+              {activeSegment.durSec}s)
             </span>
-            <span className="text-emerald-400">07:15 (Target Ideal)</span>
-            <span className="text-amber-400">08:00 (Maksimal LMS)</span>
+            <span className="tabular-nums text-ink-soft">07:15 (Target Ideal)</span>
+            <span className="tabular-nums text-warn">08:00 (Maksimal LMS)</span>
           </div>
         </div>
 
-        {/* Active Teleprompter Focus Box */}
-        <div className="mt-5 p-4 rounded-lg bg-slate-950 border border-indigo-900/70 shadow-md">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-3 border-b border-slate-800/70">
-            <div className="flex items-center gap-2.5">
-              <span className="px-2 py-0.5 rounded bg-indigo-600 text-white font-mono text-xs font-bold shadow-sm">
+        {/* Teleprompter fokus segmen aktif */}
+        <div className="mt-6 rounded-sm border border-accent/40 bg-canvas p-4">
+          <div className="flex flex-col gap-3 border-b border-line pb-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="rounded-sm bg-accent px-2 py-0.5 font-mono text-xs font-bold text-accent-ink">
                 {activeSegment.id}
               </span>
-              <div>
-                <h3 className="text-sm font-bold text-white tracking-tight">
-                  {activeSegment.title}
-                </h3>
-                <span className="text-xs font-mono text-indigo-300">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold tracking-tight text-ink">{activeSegment.title}</h3>
+                <span className="font-mono text-[11px] tabular-nums text-ink-muted">
                   Target Alokasi: {activeSegment.timeRange} ({activeSegment.durSec} detik)
                 </span>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 font-mono block">Pembicara Bertugas:</span>
-                <span className="text-xs font-bold text-emerald-300 font-mono">
+            <div className="flex flex-wrap items-center gap-3">
+              <div>
+                <MicroLabel className="block">Pembicara Bertugas</MicroLabel>
+                <span className="font-mono text-xs font-semibold text-ink">
                   {state.members.find((m) => m.id === state.videoAssignments[activeSegment.id])?.nama ||
                     "(Belum dialokasikan)"}
                 </span>
               </div>
-
               {activeSegment.uiTargetUrl && (
                 <a
                   href={activeSegment.uiTargetUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-xs font-mono flex items-center gap-1 transition-colors"
+                  className="btn btn-outline !px-2 !py-1 font-mono !text-[11px]"
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>Buka {activeSegment.uiTargetName?.split(" ")[0]}</span>
+                  Buka {activeSegment.uiTargetName?.split(" ")[0]}
                 </a>
               )}
             </div>
           </div>
 
-          {/* Teleprompter Live Script */}
-          <div className="mt-3.5 space-y-3">
+          <div className="mt-4 space-y-4">
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-mono uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Volume2 className="w-3 h-3 text-indigo-400" />
-                  Naskah Lisan Presenter (Baca dengan tempo artikulatif & percaya diri):
-                </span>
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                <MicroLabel>
+                  Naskah Lisan Presenter (Baca dengan tempo artikulatif &amp; percaya diri)
+                </MicroLabel>
                 <button
                   type="button"
                   onClick={() => handleCopy(activeSegment.spokenScript, `prompter-${activeSegment.id}`)}
-                  className="text-[11px] font-mono text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+                  className={`btn btn-ghost !px-2 !py-0.5 font-mono !text-[11px] ${
+                    copiedKey === `prompter-${activeSegment.id}` ? "!text-ok" : ""
+                  }`}
                 >
-                  {copiedKey === `prompter-${activeSegment.id}` ? (
-                    <span className="text-emerald-400 font-semibold">Tersalin!</span>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span>Salin Naskah Segmen</span>
-                    </>
-                  )}
+                  {copiedKey === `prompter-${activeSegment.id}`
+                    ? "Tersalin!"
+                    : "Salin Naskah Segmen"}
                 </button>
               </div>
-              <blockquote className="p-3.5 rounded bg-[#070b14] border border-slate-800 text-xs md:text-sm text-slate-200 leading-relaxed font-sans italic">
-                "{activeSegment.spokenScript}"
+              <blockquote className="rounded-sm border-l-2 border-accent bg-surface-2 p-4 text-[13px] italic leading-relaxed text-ink-soft">
+                “{activeSegment.spokenScript}”
               </blockquote>
             </div>
 
-            {/* Quick Terminal Command & Visual Directives */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800/80 text-xs">
-                <span className="text-[10px] font-mono text-cyan-400 uppercase font-bold block mb-1 flex items-center gap-1">
-                  <Monitor className="w-3 h-3" /> Panduan Visual Layar (OBS Studio):
-                </span>
-                <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div>
+                <MicroLabel className="mb-1.5 block">Panduan Visual Layar (OBS Studio)</MicroLabel>
+                <ul className="list-disc space-y-1 pl-5 text-xs leading-snug text-ink-soft">
                   {activeSegment.onScreenVisuals.map((vis, vIdx) => (
-                    <li key={vIdx} className="leading-tight">
-                      {vis}
-                    </li>
+                    <li key={vIdx}>{vis}</li>
                   ))}
                 </ul>
               </div>
-
-              <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800/80 text-xs">
-                <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold block mb-1 flex items-center gap-1">
-                  <Terminal className="w-3 h-3" /> Perintah Terminal Segmen Ini:
-                </span>
+              <div>
+                <MicroLabel className="mb-1.5 block">Perintah Terminal Segmen Ini</MicroLabel>
                 {activeSegment.cliCommands.length > 0 ? (
-                  <div className="space-y-1.5 font-mono text-[11px]">
+                  <div className="space-y-1.5">
                     {activeSegment.cliCommands.map((cmd, cIdx) => (
-                      <div
+                      <CliLine
                         key={cIdx}
-                        className="flex items-center justify-between bg-black/60 px-2 py-1 rounded border border-slate-800"
-                      >
-                        <code className="text-amber-300 truncate max-w-[280px] sm:max-w-[340px]">
-                          {cmd}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(cmd, `cmd-${activeSegment.id}-${cIdx}`)}
-                          className="text-slate-400 hover:text-white p-0.5 ml-1 transition-colors"
-                          title="Salin perintah"
-                        >
-                          {copiedKey === `cmd-${activeSegment.id}-${cIdx}` ? (
-                            <Check className="w-3 h-3 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
-                      </div>
+                        cmd={cmd}
+                        copied={copiedKey === `cmd-${activeSegment.id}-${cIdx}`}
+                        onCopy={() => handleCopy(cmd, `cmd-${activeSegment.id}-${cIdx}`)}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-slate-500 italic mt-2">
-                    (Tidak ada perintah CLI baru pada segmen ini; fokus visual pada webcam & form akreditasi).
+                  <p className="text-[11px] italic text-ink-muted">
+                    (Tidak ada perintah CLI baru pada segmen ini; fokus visual pada webcam &amp; form akreditasi).
                   </p>
                 )}
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </Panel>
 
-      {/* Production Compliance Checklist (LMS Rubric Gate) */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
+      {/* Checklist kepatuhan produksi */}
+      <Panel
+        title="Checklist Mutu Rekaman"
+        actions={
+          checklistDone === 4 ? (
+            <Chip tone="ok">100% Siap Rekam</Chip>
+          ) : (
+            <span className="font-mono text-[11px] text-ink-muted">
+              Status: <strong className="text-warn">{checklistDone} / 4 Lulus</strong>
+            </span>
+          )
+        }
       >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-          <h3 className="text-xs font-bold text-white flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Checklist Standar Mutu Rekaman (Pemeriksaan Wajib Sebelum Unggah)</span>
-          </h3>
-          <span className="text-[11px] font-mono text-slate-400">
-            Status:{" "}
-            {Object.values(state.videoChecklist).filter(Boolean).length === 4 ? (
-              <strong className="text-emerald-400">100% SIAP REKAM</strong>
-            ) : (
-              <strong className="text-amber-400">
-                {Object.values(state.videoChecklist).filter(Boolean).length} / 4 Lulus
-              </strong>
-            )}
-          </span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {checklistItems.map(({ field, title, desc }) => (
+            <label
+              key={field}
+              className="flex cursor-pointer items-start gap-2.5 rounded-sm border border-line bg-surface-2 p-3 text-xs transition-colors hover:border-line-strong"
+            >
+              <input
+                type="checkbox"
+                checked={state.videoChecklist[field]}
+                onChange={() => handleToggleChecklist(field)}
+                style={{ accentColor: "var(--c-accent)" }}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="block font-semibold text-ink">{title}</span>
+                <span className="mt-0.5 block text-[11px] leading-tight text-ink-muted">{desc}</span>
+              </span>
+            </label>
+          ))}
         </div>
+      </Panel>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <label className="flex items-start gap-2.5 p-3 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-slate-700 transition-colors">
-            <input
-              type="checkbox"
-              checked={state.videoChecklist.terminalReal}
-              onChange={() => handleToggleChecklist("terminalReal")}
-              className="mt-0.5 w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700"
-            />
-            <div>
-              <span className="font-semibold text-slate-200 block">Terminal Nyata (Bukan Mock)</span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block leading-tight">
-                Rekam eksekusi CLI asli di terminal WSL2/PowerShell, bukan tayangan slide animasi atau rekaan log.
-              </span>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-2.5 p-3 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-slate-700 transition-colors">
-            <input
-              type="checkbox"
-              checked={state.videoChecklist.bukanSlideSaja}
-              onChange={() => handleToggleChecklist("bukanSlideSaja")}
-              className="mt-0.5 w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700"
-            />
-            <div>
-              <span className="font-semibold text-slate-200 block">Tampilkan Browser Web UI</span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block leading-tight">
-                Buka tab browser nyata untuk NameNode (9870), YARN RM (8088), dan Spark Master (8080).
-              </span>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-2.5 p-3 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-slate-700 transition-colors">
-            <input
-              type="checkbox"
-              checked={state.videoChecklist.tiapAnggotaTampil}
-              onChange={() => handleToggleChecklist("tiapAnggotaTampil")}
-              className="mt-0.5 w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700"
-            />
-            <div>
-              <span className="font-semibold text-slate-200 block">Seluruh Anggota Berbicara</span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block leading-tight">
-                Setiap anggota kelompok memaparkan bagian masing-masing secara bergiliran dengan suara jernih.
-              </span>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-2.5 p-3 rounded border border-slate-800 bg-slate-950/60 cursor-pointer hover:border-slate-700 transition-colors">
-            <input
-              type="checkbox"
-              checked={state.videoChecklist.tanpaKredensial}
-              onChange={() => handleToggleChecklist("tanpaKredensial")}
-              className="mt-0.5 w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700"
-            />
-            <div>
-              <span className="font-semibold text-slate-200 block">Bebas Kredensial Pribadi</span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block leading-tight">
-                Layar bersih dari password, token API rahasia, path sensitif, atau file pribadi di terminal.
-              </span>
-            </div>
-          </label>
-        </div>
-      </section>
-
-      {/* Workload Distribution & Speaker Equity */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-          <div>
-            <h3 className="text-xs font-bold text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-400" />
-              <span>Keseimbangan Beban Bicara Anggota Kelompok (Speaker Equity Tracker)</span>
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Rubrik penilaian mewajibkan seluruh anggota berkontribusi secara lisan dengan porsi yang proporsional.
-            </p>
-          </div>
-
+      {/* Keseimbangan beban bicara */}
+      <Panel
+        title="Pembagian Bicara Anggota"
+        sub="Rubrik penilaian mewajibkan seluruh anggota berkontribusi secara lisan dengan porsi yang proporsional."
+        actions={
           <button
             type="button"
             onClick={handleAutoDistribute}
-            className="px-3 py-1.5 rounded bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 text-xs font-mono font-medium flex items-center gap-1.5 transition-colors"
+            className="btn btn-outline font-mono"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Alokasikan Otomatis Merata</span>
+            Alokasikan Otomatis Merata
           </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {workloadStats.map(({ member, assignedCount, totalSec, percentage }) => (
-            <div
-              key={member.id}
-              className={`p-3 rounded border ${
-                assignedCount === 0
-                  ? "bg-rose-950/20 border-rose-900/60"
-                  : isDark
-                  ? "bg-slate-950/70 border-slate-800"
-                  : "bg-slate-50 border-slate-200"
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="font-semibold text-white block">
+        }
+      >
+        {workloadStats.length === 0 ? (
+          <EmptyState text="Belum ada anggota kelompok. Tambahkan anggota pada bagian Setup untuk mengatur jatah bicara." />
+        ) : (
+          <div className="divide-y divide-line rounded-sm border border-line">
+            {workloadStats.map(({ member, assignedCount, assignedSegIds, totalSec, percentage }) => (
+              <div
+                key={member.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 text-xs"
+              >
+                <div className="min-w-0 flex-1 basis-40">
+                  <span className="block truncate font-semibold text-ink">
                     {member.nama || "Tanpa Nama"}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400 block">
+                  <span className="block font-mono text-[10px] text-ink-muted">
                     NIM: {member.nim || "-"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-300">
-                  {member.porsi}
+                <Chip tone="neutral">{member.porsi}</Chip>
+                <span className="font-mono text-[11px] text-ink-soft">
+                  {assignedSegIds.length > 0 ? assignedSegIds.join(" · ") : "—"}
                 </span>
-              </div>
-
-              <div className="mt-3 space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">{assignedCount} Segmen</span>
-                  <span className="font-bold text-white">
+                <span className="font-mono text-[11px] tabular-nums">
+                  <span className="text-ink-muted">{assignedCount} Segmen</span>{" "}
+                  <strong className="text-ink">
                     {formatTime(totalSec)} ({percentage}%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                  </strong>
+                </span>
+                <div className="meter w-full basis-full sm:w-36 sm:basis-auto">
                   <div
-                    className={`h-full ${
-                      assignedCount === 0
-                        ? "bg-rose-500"
-                        : percentage < 15
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                    }`}
-                    style={{ width: `${Math.min(100, percentage)}%` }}
+                    className="meter-fill"
+                    style={{
+                      width: `${Math.min(100, percentage)}%`,
+                      background:
+                        assignedCount === 0 || percentage < 15
+                          ? "var(--c-warn)"
+                          : "var(--c-accent)",
+                    }}
                   />
                 </div>
+                {assignedCount === 0 && (
+                  <span className="w-full basis-full font-mono text-[10px] text-warn sm:w-auto sm:basis-auto">
+                    Peringatan: Belum mendapat jatah segmen!
+                  </span>
+                )}
               </div>
-
-              {assignedCount === 0 && (
-                <div className="mt-2 text-[10px] text-rose-400 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>Peringatan: Belum mendapat jatah segmen!</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 7 Segments Detailed Rundown & Cue Sheets */}
-      <section className="space-y-3">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-              Rundown & Kartu Panduan 7 Segmen Video
-            </h3>
-            <span className="text-[11px] font-mono text-slate-400">
-              (Total durasi: 07:15)
-            </span>
-          </div>
-
-          {/* Quick Segment Filter Pill Bar */}
-          <div className="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded border border-slate-800 text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => setActiveFilterId("ALL")}
-              className={`px-2 py-0.5 rounded text-[11px] ${
-                activeFilterId === "ALL"
-                  ? "bg-indigo-600 text-white font-semibold"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Semua (7)
-            </button>
-            {segmentDetails.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setActiveFilterId(s.id)}
-                className={`px-2 py-0.5 rounded text-[11px] ${
-                  activeFilterId === s.id
-                    ? "bg-indigo-600 text-white font-semibold"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {s.id}
-              </button>
             ))}
           </div>
-        </div>
+        )}
+      </Panel>
 
+      {/* Rundown 7 segmen */}
+      <Panel
+        title="Rundown 7 Segmen"
+        sub="Total durasi 07:15 · setiap kartu memuat naskah, aksi visual, perintah CLI, dan target bukti rubrik."
+        actions={
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Filter segmen">
+            <SegButton active={activeFilterId === "ALL"} onClick={() => setActiveFilterId("ALL")}>
+              Semua (7)
+            </SegButton>
+            {segmentDetails.map((s) => (
+              <SegButton
+                key={s.id}
+                active={activeFilterId === s.id}
+                onClick={() => setActiveFilterId(s.id)}
+              >
+                {s.id}
+              </SegButton>
+            ))}
+          </div>
+        }
+      >
         <div className="space-y-3">
           {displayedSegments.map((seg) => {
             const assignedMemberId = state.videoAssignments[seg.id] || "";
             const [start, end] = parseTimeRange(seg.timeRange);
             const isCurrentlyActive = elapsedSec >= start && elapsedSec < end;
-            const assignedMember = state.members.find((m) => m.id === assignedMemberId);
 
             return (
               <div
                 key={seg.id}
-                className={`border rounded-lg p-4 transition-colors ${
-                  isCurrentlyActive
-                    ? "bg-indigo-950/30 border-indigo-500 shadow-md ring-1 ring-indigo-500/30"
-                    : isDark
-                    ? "bg-[#0d1322] border-slate-800/90 hover:border-slate-700"
-                    : "bg-white border-slate-200"
+                className={`rounded-sm border p-4 transition-colors ${
+                  isCurrentlyActive ? "border-accent/60 bg-accent-wash/30" : "border-line bg-canvas"
                 }`}
               >
-                {/* Header Card */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-3 border-b border-slate-800/60">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span
-                      className={`font-mono text-xs font-bold px-2 py-0.5 rounded border ${
-                        isCurrentlyActive
-                          ? "bg-indigo-600 text-white border-indigo-400"
-                          : "text-indigo-400 bg-indigo-950/60 border-indigo-800/60"
-                      }`}
-                    >
+                {/* Baris header kartu */}
+                <div className="flex flex-col gap-3 border-b border-line pb-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                    <span className="font-mono text-xs font-bold tabular-nums text-accent">
                       {seg.id}
                     </span>
-
-                    <h4 className="text-xs font-bold text-white tracking-tight">
-                      {seg.title}
-                    </h4>
-
-                    <span className="font-mono text-[11px] text-cyan-400 tabular-nums">
+                    <h3 className="text-xs font-bold tracking-tight text-ink">{seg.title}</h3>
+                    <span className="font-mono text-[11px] tabular-nums text-ink-muted">
                       {seg.timeRange} ({seg.durSec} detik)
                     </span>
-
                     {isCurrentlyActive && (
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 animate-pulse">
-                        SEDANG BERLANGSUNG
-                      </span>
+                      <span className="status-chip chip-ok animate-pulse">Sedang Berlangsung</span>
                     )}
                   </div>
 
-                  {/* Actions & Member Dropdown */}
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleJumpToSegment(seg.id)}
-                      className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-800 flex items-center gap-1 transition-colors"
                       title="Set timer pacer ke awal segmen ini"
+                      className="btn btn-outline !px-2 !py-1 font-mono !text-[11px]"
                     >
-                      <RotateCcw className="w-3 h-3 text-indigo-400" />
-                      <span>Lompat ke {seg.id}</span>
+                      Lompat ke {seg.id}
                     </button>
-
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <User className="w-3.5 h-3.5 text-slate-500" />
+                    <div className="flex items-center gap-1.5">
+                      <label htmlFor={`assign-${seg.id}`} className="sr-only">
+                        Pilih pembicara untuk segmen {seg.id}
+                      </label>
                       <select
+                        id={`assign-${seg.id}`}
                         value={assignedMemberId}
                         onChange={(e) => handleAssignMember(seg.id, e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                        className="field font-mono !w-auto max-w-[220px] !text-xs"
                       >
                         <option value="">-- Pilih Mahasiswa --</option>
                         {state.members.map((m) => (
@@ -1154,81 +967,49 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
                   </div>
                 </div>
 
-                {/* Body Content: Script + Directives + Rubric */}
-                <div className="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
-                  {/* Left: Script Teleprompter (8 cols) */}
-                  <div className="lg:col-span-8 space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase">
-                      <span className="font-semibold text-slate-300">Naskah Pembicara Lisan:</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(seg.spokenScript, `card-script-${seg.id}`)}
-                        className="text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
-                      >
-                        {copiedKey === `card-script-${seg.id}` ? (
-                          <span className="text-emerald-400 font-bold">Disalin</span>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Salin</span>
-                          </>
-                        )}
-                      </button>
+                {/* Isi kartu: naskah + direktif teknis */}
+                <div className="mt-3 grid grid-cols-1 gap-4 text-xs lg:grid-cols-12">
+                  <div className="space-y-2.5 lg:col-span-8">
+                    <div className="flex items-center justify-between gap-2">
+                      <MicroLabel>Naskah Pembicara Lisan</MicroLabel>
+                      <CopyButton
+                        text={seg.spokenScript}
+                        label="Salin"
+                        title={`Salin naskah segmen ${seg.id}`}
+                      />
                     </div>
-
-                    <p className="p-3 rounded bg-slate-950/70 border border-slate-800 text-slate-200 text-xs leading-relaxed italic font-sans">
-                      "{seg.spokenScript}"
-                    </p>
-
-                    {/* Rubric Alignment Note */}
-                    <div className="flex items-start gap-1.5 text-[11px] text-slate-400 font-mono bg-indigo-950/20 p-2 rounded border border-indigo-900/40">
-                      <Award className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>
-                        <strong className="text-indigo-300">Target Bukti Rubrik:</strong> {seg.rubricFocus}
-                      </span>
+                    <blockquote className="rounded-sm border-l-2 border-accent bg-surface-2 p-3 italic leading-relaxed text-ink-soft">
+                      “{seg.spokenScript}”
+                    </blockquote>
+                    <div className="rounded-sm border-l-2 border-accent-wash bg-surface-2 p-2.5">
+                      <MicroLabel className="block">Target Bukti Rubrik</MicroLabel>
+                      <p className="mt-0.5 font-mono text-[11px] leading-snug text-ink-soft">
+                        {seg.rubricFocus}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Right: Technical directives & CLI (4 cols) */}
-                  <div className="lg:col-span-4 space-y-2.5">
+                  <div className="space-y-3 lg:col-span-4">
                     <div>
-                      <span className="text-[10px] font-mono uppercase font-semibold text-cyan-400 block mb-1">
-                        Aksi Visual di Layar:
-                      </span>
-                      <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-300">
+                      <MicroLabel className="mb-1 block">Aksi Visual di Layar</MicroLabel>
+                      <ul className="list-disc space-y-0.5 pl-5 text-[11px] leading-snug text-ink-soft">
                         {seg.onScreenVisuals.map((vis, vIdx) => (
-                          <li key={vIdx} className="leading-snug">
-                            {vis}
-                          </li>
+                          <li key={vIdx}>{vis}</li>
                         ))}
                       </ul>
                     </div>
 
                     {seg.cliCommands.length > 0 && (
                       <div>
-                        <span className="text-[10px] font-mono uppercase font-semibold text-indigo-400 block mb-1">
-                          Perintah Terminal Terkait:
-                        </span>
+                        <MicroLabel className="mb-1 block">Perintah Terminal Terkait</MicroLabel>
                         <div className="space-y-1">
                           {seg.cliCommands.map((cmd, cIdx) => (
-                            <div
+                            <CliLine
                               key={cIdx}
-                              className="flex items-center justify-between bg-black/60 px-2 py-1 rounded border border-slate-800 font-mono text-[10px]"
-                            >
-                              <code className="text-amber-300 truncate max-w-[190px]">{cmd}</code>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(cmd, `seg-cmd-${seg.id}-${cIdx}`)}
-                                className="text-slate-400 hover:text-white p-0.5"
-                                title="Salin perintah"
-                              >
-                                {copiedKey === `seg-cmd-${seg.id}-${cIdx}` ? (
-                                  <Check className="w-2.5 h-2.5 text-emerald-400" />
-                                ) : (
-                                  <Copy className="w-2.5 h-2.5" />
-                                )}
-                              </button>
-                            </div>
+                              cmd={cmd}
+                              copied={copiedKey === `seg-cmd-${seg.id}-${cIdx}`}
+                              onCopy={() => handleCopy(cmd, `seg-cmd-${seg.id}-${cIdx}`)}
+                            />
                           ))}
                         </div>
                       </div>
@@ -1239,92 +1020,76 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
             );
           })}
         </div>
-      </section>
+      </Panel>
 
-      {/* Recording Takes Log & History */}
-      <section
-        className={`border rounded-lg p-5 transition-colors ${
-          isDark ? "bg-[#0d1322] border-slate-800" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-          <div>
-            <h3 className="text-xs font-bold text-white flex items-center gap-2">
-              <Tv className="w-4 h-4 text-cyan-400" />
-              <span>Log Riwayat Uji Coba Rekaman (Rehearsal Takes)</span>
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Catat waktu rekaman setiap kali kelompok Anda melakukan gladi resik untuk memantau konsistensi pacing.
-            </p>
-          </div>
-
-          {/* Quick Input Note */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <input
-              type="text"
-              placeholder="Catatan take (opsional)..."
-              value={takeNoteInput}
-              onChange={(e) => setTakeNoteInput(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono w-full sm:w-64"
-            />
+      {/* Log riwayat take */}
+      <Panel
+        title="Riwayat Uji Coba Rekaman"
+        sub='Catat durasi tiap gladi resik untuk memantau pacing.'
+        actions={
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <div className="w-full sm:w-56">
+              <label htmlFor="take-note-input" className="sr-only">
+                Catatan take (opsional)
+              </label>
+              <input
+                id="take-note-input"
+                type="text"
+                placeholder="Catatan take (opsional)..."
+                value={takeNoteInput}
+                onChange={(e) => setTakeNoteInput(e.target.value)}
+                className="field font-mono !text-xs"
+              />
+            </div>
             <button
               type="button"
               onClick={handleRecordTake}
               disabled={elapsedSec === 0}
-              className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-mono font-medium shrink-0 transition-colors"
+              className="btn btn-primary shrink-0 font-mono"
             >
               Simpan Take
             </button>
           </div>
-        </div>
-
+        }
+      >
         {takes.length === 0 ? (
-          <div className="text-center py-6 text-slate-500 text-xs font-mono border border-dashed border-slate-800 rounded">
-            Belum ada riwayat take yang tercatat. Jalankan timer rehearsal lalu klik "Catat Take".
-          </div>
+          <EmptyState text='Belum ada riwayat take yang tercatat. Jalankan timer rehearsal lalu klik "Catat Take".' />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full min-w-[560px] text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase">
-                  <th className="py-2 px-3">Waktu</th>
-                  <th className="py-2 px-3">Durasi</th>
-                  <th className="py-2 px-3">Status LMS</th>
-                  <th className="py-2 px-3">Catatan Evaluasi</th>
-                  <th className="py-2 px-3 text-right">Aksi</th>
+                <tr className="border-b border-line">
+                  <th className="label-micro px-3 py-2 font-normal">Waktu</th>
+                  <th className="label-micro px-3 py-2 font-normal">Durasi</th>
+                  <th className="label-micro px-3 py-2 font-normal">Status LMS</th>
+                  <th className="label-micro px-3 py-2 font-normal">Catatan Evaluasi</th>
+                  <th className="label-micro px-3 py-2 text-right font-normal">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono">
+              <tbody className="divide-y divide-line">
                 {takes.map((take) => (
-                  <tr key={take.id} className="hover:bg-slate-900/30">
-                    <td className="py-2 px-3 text-slate-400">{take.timestamp}</td>
-                    <td className="py-2 px-3 text-white font-bold tabular-nums">
+                  <tr key={take.id} className="hover:bg-surface-2/60">
+                    <td className="px-3 py-2 font-mono text-[11px] tabular-nums text-ink-muted">
+                      {take.timestamp}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] font-bold tabular-nums text-ink">
                       {formatTime(take.durationSec)}
                     </td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
-                          take.verdict === "PASS"
-                            ? "bg-emerald-950 text-emerald-300 border-emerald-800"
-                            : take.verdict === "WARN"
-                            ? "bg-amber-950 text-amber-300 border-amber-800"
-                            : "bg-rose-950 text-rose-300 border-rose-800"
-                        }`}
-                      >
+                    <td className="px-3 py-2">
+                      <Chip tone={takeVerdictTone[take.verdict]}>
                         {take.verdict === "PASS" && "Lolos Ideal (<=07:15)"}
                         {take.verdict === "WARN" && "Toleransi (07:15-08:00)"}
                         {take.verdict === "PENALTY" && "Terlalu Panjang (>08:00)"}
-                      </span>
+                      </Chip>
                     </td>
-                    <td className="py-2 px-3 text-slate-300 font-sans text-xs">
-                      {take.notes}
-                    </td>
-                    <td className="py-2 px-3 text-right">
+                    <td className="px-3 py-2 text-xs text-ink-soft">{take.notes}</td>
+                    <td className="px-3 py-2 text-right">
                       <button
                         type="button"
                         onClick={() => handleDeleteTake(take.id)}
-                        className="text-slate-500 hover:text-rose-400 text-[11px] transition-colors"
                         title="Hapus take ini"
+                        aria-label={`Hapus take ${take.timestamp}`}
+                        className="btn btn-danger-ghost !px-2 !py-0.5 font-mono !text-[11px]"
                       >
                         Hapus
                       </button>
@@ -1335,7 +1100,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
     </div>
   );
 };

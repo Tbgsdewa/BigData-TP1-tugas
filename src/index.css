@@ -1,15 +1,233 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.theme-dark, .theme-dark *));
+
+/* ------------------------------------------------------------------
+   Cluster Operations Workbench — design tokens
+   Gaya editorial-operasional: kertas hangat / charcoal, satu aksen
+   petrol-telemetri, status fungsional (ok / waspada / gagal).
+   Mono khusus untuk data teknis; radius kecil; garis pemisah jelas.
+------------------------------------------------------------------- */
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-ink-soft: var(--c-ink-soft);
+  --color-ink-muted: var(--c-ink-muted);
+
+  --color-accent: var(--c-accent);
+  --color-accent-strong: var(--c-accent-strong);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-accent-wash: var(--c-accent-wash);
+
+  --color-code: var(--c-code);
+  --color-code-2: var(--c-code-2);
+  --color-code-ink: var(--c-code-ink);
+  --color-code-muted: var(--c-code-muted);
+  --color-code-line: var(--c-code-line);
+
+  --color-ok: var(--c-ok);
+  --color-ok-wash: var(--c-ok-wash);
+  --color-warn: var(--c-warn);
+  --color-warn-wash: var(--c-warn-wash);
+  --color-danger: var(--c-danger);
+  --color-danger-wash: var(--c-danger-wash);
+}
+
+.theme-light {
+  --c-canvas: #ede8dd;
+  --c-surface: #f8f5ee;
+  --c-surface-2: #e6e0d2;
+  --c-line: #d9d2c2;
+  --c-line-strong: #b9b09c;
+  --c-ink: #201d17;
+  --c-ink-soft: #4b463c;
+  --c-ink-muted: #7b7365;
+
+  --c-accent: #0d655a;
+  --c-accent-strong: #0a4f47;
+  --c-accent-ink: #f4fbf9;
+  --c-accent-wash: #dcebe7;
+
+  --c-code: #1d1b15;
+  --c-code-2: #26241c;
+  --c-code-ink: #e6e1d3;
+  --c-code-muted: #9c9583;
+  --c-code-line: #383529;
+
+  --c-ok: #2f6b3f;
+  --c-ok-wash: #dfead9;
+  --c-warn: #8a5b10;
+  --c-warn-wash: #f1e4c8;
+  --c-danger: #a03b2b;
+  --c-danger-wash: #f2dcd4;
+}
+
+.theme-dark {
+  --c-canvas: #181712;
+  --c-surface: #211f1a;
+  --c-surface-2: #2a2821;
+  --c-line: #363328;
+  --c-line-strong: #4d483b;
+  --c-ink: #e9e4d6;
+  --c-ink-soft: #c3bcab;
+  --c-ink-muted: #8b8474;
+
+  --c-accent: #58b3a3;
+  --c-accent-strong: #7fcabb;
+  --c-accent-ink: #0c211d;
+  --c-accent-wash: #22403b;
+
+  --c-code: #121109;
+  --c-code-2: #1a1912;
+  --c-code-ink: #ddd7c7;
+  --c-code-muted: #8c8571;
+  --c-code-line: #302d22;
+
+  --c-ok: #74ad82;
+  --c-ok-wash: #24331f;
+  --c-warn: #d4a455;
+  --c-warn-wash: #3a2f18;
+  --c-danger: #e0796a;
+  --c-danger-wash: #3d211c;
+}
+
 @layer base {
+  html,
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--c-canvas);
+  }
+
+  body {
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  code, pre, kbd, samp {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
     font-feature-settings: "liga" 0;
+  }
+
+  ::selection {
+    background: var(--c-accent);
+    color: var(--c-accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Label mikro: uppercase, letterspaced — untuk judul kolom, meta, seksi kecil */
+  .label-micro {
+    @apply font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted;
+  }
+
+  /* Panel dasar setiap blok kerja */
+  .panel {
+    @apply border border-line bg-surface;
+  }
+
+  .panel-header {
+    @apply flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4;
+  }
+
+  /* Input form standar */
+  .field {
+    @apply w-full rounded-sm border border-line bg-surface-2 px-2.5 py-1.5 text-[13px] text-ink placeholder:text-ink-muted/70 transition-colors focus:border-accent focus:outline-none;
+  }
+
+  .field-mono {
+    @apply font-mono;
+  }
+
+  /* Blok kode / terminal — selalu gelap (identitas manual teknis) */
+  .code-block {
+    @apply overflow-x-auto rounded-sm border border-code-line bg-code px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-code-ink;
+  }
+
+  /* Tombol */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply border-accent bg-accent text-accent-ink hover:border-accent-strong hover:bg-accent-strong;
+  }
+
+  .btn-outline {
+    @apply border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-ink-muted hover:bg-surface-2 hover:text-ink;
+  }
+
+  .btn-danger-ghost {
+    @apply border-transparent bg-transparent text-ink-muted hover:bg-danger-wash hover:text-danger;
+  }
+
+  /* Badge status fungsional (bukan pill dekoratif) */
+  .status-chip {
+    @apply inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider;
+  }
+
+  .chip-ok {
+    @apply border-ok/50 bg-ok-wash text-ok;
+  }
+
+  .chip-warn {
+    @apply border-warn/50 bg-warn-wash text-warn;
+  }
+
+  .chip-danger {
+    @apply border-danger/50 bg-danger-wash text-danger;
+  }
+
+  .chip-neutral {
+    @apply border-line bg-surface-2 text-ink-muted;
+  }
+
+  .chip-accent {
+    @apply border-accent/50 bg-accent-wash text-accent;
+  }
+
+  /* Meter progres tipis */
+  .meter {
+    @apply h-1 w-full overflow-hidden rounded-sm bg-surface-2;
+  }
+
+  .meter > .meter-fill {
+    @apply h-full bg-accent transition-[width] duration-200;
+  }
+
+  /* Header bar panel: judul + meta */
+  .page-meta {
+    @apply font-mono text-[11px] text-ink-muted;
   }
 }
 
@@ -18,6 +236,33 @@
     margin: 1.5cm;
     size: A4 portrait;
   }
+
+  /* Paksa token terang saat mencetak agar dokumen akademik tetap terbaca */
+  .theme-dark {
+    --c-canvas: #ffffff;
+    --c-surface: #ffffff;
+    --c-surface-2: #f3f1ea;
+    --c-line: #d7d3c8;
+    --c-line-strong: #a8a294;
+    --c-ink: #14120e;
+    --c-ink-soft: #2b2822;
+    --c-ink-muted: #5c574d;
+    --c-accent: #0d655a;
+    --c-accent-ink: #ffffff;
+    --c-accent-wash: #e4efec;
+    --c-code: #f6f4ee;
+    --c-code-2: #f0eee6;
+    --c-code-ink: #14120e;
+    --c-code-muted: #5c574d;
+    --c-code-line: #d7d3c8;
+    --c-ok: #22603a;
+    --c-ok-wash: #e4efdf;
+    --c-warn: #7c5310;
+    --c-warn-wash: #f2e7cd;
+    --c-danger: #8f2f22;
+    --c-danger-wash: #f3dcd6;
+  }
+
   body {
     background-color: white !important;
     color: black !important;
