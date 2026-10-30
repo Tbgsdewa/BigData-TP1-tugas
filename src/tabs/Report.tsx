@@ -137,7 +137,7 @@ export const ReportTab: React.FC<ReportProps> = ({ state, onChange, onNavigateTo
 
   const handleExportBundleJson = () => {
     const bundle = {
-      project: "BigData TP1 Lab Companion",
+      project: "Tugas BigData Tbgsdewa % Dearizka",
       institution: "STMIK Pelita Nusantara",
       exportedAt: new Date().toISOString(),
       studentLead: {
@@ -1092,7 +1092,7 @@ export const ReportTab: React.FC<ReportProps> = ({ state, onChange, onNavigateTo
             {/* Lembar Tanda Tangan Praktikan */}
             <div className="pt-6 border-t border-slate-800 flex justify-between items-end print:border-slate-300 print:pt-4">
               <div className="text-[10px] text-slate-500 print:text-slate-600 font-mono">
-                Dicetak melalui BigData TP1 Lab Companion • STMIK Pelita Nusantara
+                Dicetak melalui Tugas BigData Tbgsdewa % Dearizka • STMIK Pelita Nusantara
               </div>
               <div className="text-right space-y-8 font-mono text-[11px]">
                 <div>

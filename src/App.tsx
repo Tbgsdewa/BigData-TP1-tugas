@@ -506,7 +506,7 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                  BigData TP1 Lab Companion
+                  Tugas BigData Tbgsdewa % Dearizka
                 </span>
                 <span className="text-slate-500 text-xs" aria-hidden="true">·</span>
                 <span className="text-xs text-slate-400 whitespace-nowrap hidden sm:inline">
