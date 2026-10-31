@@ -532,7 +532,7 @@ export default function App() {
         <p className="label-micro mt-2.5 truncate">
           {state.members[0]?.nama?.trim()
             ? `Operator: ${state.members[0].nama.trim()}`
-            : "Tbgsdewa % Dearizka · Belum diklaim"}
+            : "Workspace mahasiswa"}
         </p>
         <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted">
           Hadoop 3.3.6 × Spark 3.5.1 · STMIK Pelita Nusantara
