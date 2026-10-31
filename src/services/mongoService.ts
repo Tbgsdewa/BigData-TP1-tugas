@@ -16,6 +16,16 @@ export interface MongoStatus {
   timestamp: string;
 }
 
+export interface DatabaseAuthStatus {
+  configured: boolean;
+  authenticated: boolean;
+}
+
+async function getResponseError(response: Response): Promise<string> {
+  const body = await response.json().catch(() => null);
+  return body && typeof body.error === "string" ? body.error : `HTTP ${response.status}`;
+}
+
 export interface MongoReportDoc {
   id: string;
   title: string;
@@ -27,12 +37,43 @@ export interface MongoReportDoc {
 }
 
 export const mongoService = {
+  async getAuthStatus(): Promise<DatabaseAuthStatus> {
+    const res = await fetch("/api/auth/status", { credentials: "same-origin" });
+    if (!res.ok) throw new Error(await getResponseError(res));
+    return await res.json();
+  },
+
+  async login(password: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const result = await res.json();
+      if (!res.ok) return { success: false, error: result.error || `HTTP ${res.status}` };
+      return result;
+    } catch (err: any) {
+      return { success: false, error: err.message || "Koneksi jaringan gagal" };
+    }
+  },
+
+  async logout(): Promise<void> {
+    const res = await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (!res.ok) throw new Error(await getResponseError(res));
+  },
+
   /**
    * Cek status koneksi MongoDB dan statistik koleksi
    */
   async getStatus(): Promise<MongoStatus> {
     try {
       const res = await fetch("/api/db/status", {
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -52,28 +93,13 @@ export const mongoService = {
   },
 
   /**
-   * Tes koneksi atau hubungkan ke MongoDB secara dinamis
-   */
-  async testOrConnect(uri: string, dbName?: string): Promise<{ success: boolean; error?: string; pingMs?: number }> {
-    try {
-      const res = await fetch("/api/db/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uri, dbName }),
-      });
-      return await res.json();
-    } catch (err: any) {
-      return { success: false, error: err.message || "Koneksi jaringan gagal" };
-    }
-  },
-
-  /**
    * Simpan seluruh AppState ke koleksi MongoDB 'sessions'
    */
   async saveState(state: AppState, sessionId: string = "default_tp1"): Promise<{ success: boolean; savedTo?: string; error?: string }> {
     try {
       const res = await fetch("/api/db/state", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId,
@@ -95,47 +121,51 @@ export const mongoService = {
   /**
    * Ambil AppState tersimpan dari MongoDB
    */
-  async loadState(sessionId: string = "default_tp1"): Promise<{ success: boolean; data?: AppState | null; source?: string }> {
+  async loadState(sessionId: string = "default_tp1"): Promise<{ success: boolean; data?: AppState | null; source?: string; error?: string }> {
     try {
-      const res = await fetch(`/api/db/state?sessionId=${encodeURIComponent(sessionId)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(`/api/db/state?sessionId=${encodeURIComponent(sessionId)}`, {
+        credentials: "same-origin",
+      });
+      if (!res.ok) throw new Error(await getResponseError(res));
       return await res.json();
     } catch (err: any) {
-      return { success: false, data: null };
+      return { success: false, data: null, error: err.message };
     }
   },
 
   /**
    * Sync bukti (evidence) ke koleksi 'evidence'
    */
-  async syncEvidence(evidenceItems: EvidenceItem[]): Promise<{ success: boolean; savedCount?: number }> {
+  async syncEvidence(evidenceItems: EvidenceItem[]): Promise<{ success: boolean; savedCount?: number; error?: string }> {
     try {
       const res = await fetch("/api/db/evidence", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: evidenceItems }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await getResponseError(res));
       return await res.json();
     } catch (err: any) {
-      return { success: false };
+      return { success: false, error: err.message };
     }
   },
 
   /**
    * Simpan laporan praktikum Markdown ke MongoDB
    */
-  async saveReport(report: { title: string; content: string; author: string; parityStatus: string; metrics?: any }): Promise<{ success: boolean; report?: MongoReportDoc }> {
+  async saveReport(report: { title: string; content: string; author: string; parityStatus: string; metrics?: any }): Promise<{ success: boolean; report?: MongoReportDoc; error?: string }> {
     try {
       const res = await fetch("/api/db/reports", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(report),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await getResponseError(res));
       return await res.json();
     } catch (err: any) {
-      return { success: false };
+      return { success: false, error: err.message };
     }
   },
 
@@ -144,7 +174,7 @@ export const mongoService = {
    */
   async fetchReports(): Promise<MongoReportDoc[]> {
     try {
-      const res = await fetch("/api/db/reports");
+      const res = await fetch("/api/db/reports", { credentials: "same-origin" });
       if (!res.ok) return [];
       const data = await res.json();
       return data.reports || [];

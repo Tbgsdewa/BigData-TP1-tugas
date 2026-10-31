@@ -10,6 +10,7 @@ import {
   Check,
   X,
   Activity,
+  KeyRound,
 } from "lucide-react";
 import { Chip, FieldLabel } from "./ui";
 import { MongoStatus, mongoService } from "../services/mongoService";
@@ -20,6 +21,9 @@ interface MongoModalProps {
   onClose: () => void;
   status: MongoStatus | null;
   onRefreshStatus: () => Promise<void>;
+  accessConfigured: boolean;
+  isAuthenticated: boolean;
+  onAuthChange: (authenticated: boolean) => void;
   currentState: AppState;
   onStateRestored: (newState: AppState) => void;
   autoSync: boolean;
@@ -31,50 +35,84 @@ export function MongoModal({
   onClose,
   status,
   onRefreshStatus,
+  accessConfigured,
+  isAuthenticated,
+  onAuthChange,
   currentState,
   onStateRestored,
   autoSync,
   onToggleAutoSync,
 }: MongoModalProps) {
-  const [customUri, setCustomUri] = useState("");
-  const [dbName, setDbName] = useState("bigdata_tp1");
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [accessPassword, setAccessPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleTestConnect = async () => {
-    if (!customUri.trim()) {
-      setSyncFeedback({ type: "error", message: "Masukkan connection string MongoDB terlebih dahulu." });
+  const handleLogin = async () => {
+    if (!accessPassword) {
+      setSyncFeedback({ type: "error", message: "Masukkan kata sandi akses tim." });
       return;
     }
-    setIsConnecting(true);
+    setIsAuthenticating(true);
     setSyncFeedback(null);
     try {
-      const res = await mongoService.testOrConnect(customUri.trim(), dbName.trim() || "bigdata_tp1");
+      const res = await mongoService.login(accessPassword);
       if (res.success) {
-        setSyncFeedback({ type: "success", message: `Berhasil terhubung ke MongoDB! Ping: ${res.pingMs}ms` });
+        setAccessPassword("");
+        onAuthChange(true);
         await onRefreshStatus();
+        setSyncFeedback({ type: "success", message: "Akses penyimpanan tim berhasil dibuka." });
       } else {
-        setSyncFeedback({ type: "error", message: res.error || "Gagal menghubungi MongoDB." });
+        setSyncFeedback({ type: "error", message: res.error || "Autentikasi gagal." });
       }
     } catch (err: any) {
-      setSyncFeedback({ type: "error", message: err.message || "Terjadi kesalahan koneksi." });
+      setSyncFeedback({ type: "error", message: err.message || "Gagal memverifikasi akses." });
     } finally {
-      setIsConnecting(false);
+      setIsAuthenticating(false);
     }
   };
 
+  const handleLogout = async () => {
+    setSyncFeedback(null);
+    try {
+      await mongoService.logout();
+      onAuthChange(false);
+      await onRefreshStatus();
+      setSyncFeedback({ type: "success", message: "Akses penyimpanan tim ditutup." });
+    } catch (err: any) {
+      setSyncFeedback({ type: "error", message: err.message || "Gagal menutup sesi." });
+    }
+  };
+
+  const handleClose = () => {
+    setAccessPassword("");
+    onClose();
+  };
+
   const handlePushToCloud = async () => {
+    if (!isAuthenticated) return;
     setIsSyncing(true);
     setSyncFeedback(null);
     try {
       const stateRes = await mongoService.saveState(currentState, "default_tp1");
+      if (!stateRes.success) {
+        setSyncFeedback({ type: "error", message: stateRes.error || "Gagal menyimpan sesi." });
+        return;
+      }
+
       const evidenceList = Object.values(currentState.evidence || {});
       if (evidenceList.length > 0) {
-        await mongoService.syncEvidence(evidenceList);
+        const evidenceRes = await mongoService.syncEvidence(evidenceList);
+        if (!evidenceRes.success) {
+          setSyncFeedback({
+            type: "error",
+            message: evidenceRes.error || "Sesi tersimpan, tetapi sinkronisasi bukti gagal.",
+          });
+          return;
+        }
       }
       await onRefreshStatus();
       setSyncFeedback({
@@ -89,11 +127,14 @@ export function MongoModal({
   };
 
   const handlePullFromCloud = async () => {
+    if (!isAuthenticated) return;
     setIsSyncing(true);
     setSyncFeedback(null);
     try {
       const res = await mongoService.loadState("default_tp1");
-      if (res.success && res.data) {
+      if (!res.success) {
+        setSyncFeedback({ type: "error", message: res.error || "Gagal mengambil sesi dari penyimpanan tim." });
+      } else if (res.data) {
         onStateRestored(res.data);
         setSyncFeedback({
           type: "success",
@@ -149,7 +190,7 @@ export function MongoModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="btn btn-ghost shrink-0 !px-2"
             aria-label="Tutup panel MongoDB"
           >
@@ -224,6 +265,53 @@ export function MongoModal({
             </dl>
           </div>
 
+          {/* Access control */}
+          <div className="space-y-3 rounded-sm border border-line bg-surface-2 p-4">
+            <h4 className="label-micro flex items-center gap-2 !text-ink-soft">
+              <KeyRound className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+              Akses Penyimpanan Tim
+            </h4>
+            {!accessConfigured ? (
+              <p className="text-xs leading-relaxed text-warn">
+                Akses cloud dikunci sampai <code>APP_ACCESS_PASSWORD</code> (minimal 32 karakter) diatur pada
+                environment server/Vercel.
+              </p>
+            ) : isAuthenticated ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-ok">Sesi tim aktif pada perangkat ini.</p>
+                <button type="button" onClick={handleLogout} className="btn btn-outline">
+                  Kunci Sesi
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  <FieldLabel htmlFor="database-access-password">Kata sandi akses tim</FieldLabel>
+                  <input
+                    id="database-access-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={accessPassword}
+                    onChange={(event) => setAccessPassword(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleLogin();
+                    }}
+                    className="field"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogin}
+                  disabled={isAuthenticating}
+                  className="btn btn-primary"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  {isAuthenticating ? "Memverifikasi..." : "Buka Akses"}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Sync Actions */}
           <div className="space-y-3 rounded-sm border border-line bg-surface-2 p-4">
             <h4 className="label-micro flex items-center gap-2 !text-ink-soft">
@@ -234,7 +322,7 @@ export function MongoModal({
               <button
                 type="button"
                 onClick={handlePushToCloud}
-                disabled={isSyncing}
+                disabled={isSyncing || !isAuthenticated}
                 className="btn btn-primary"
               >
                 <UploadCloud className="h-3.5 w-3.5" />
@@ -243,7 +331,7 @@ export function MongoModal({
               <button
                 type="button"
                 onClick={handlePullFromCloud}
-                disabled={isSyncing}
+                disabled={isSyncing || !isAuthenticated}
                 className="btn btn-outline"
               >
                 <DownloadCloud className="h-3.5 w-3.5" />
@@ -253,6 +341,7 @@ export function MongoModal({
                 <input
                   type="checkbox"
                   checked={autoSync}
+                  disabled={!isAuthenticated}
                   onChange={(e) => onToggleAutoSync(e.target.checked)}
                   className="h-4 w-4 accent-accent"
                 />
@@ -280,44 +369,45 @@ export function MongoModal({
             </div>
           )}
 
-          {/* Connect Live via UI */}
+          {/* Database credentials stay on the server; never accept them from this browser. */}
           <div className="space-y-3 rounded-sm border border-line bg-surface-2 p-4">
             <h4 className="label-micro flex items-center gap-2 !text-ink-soft">
               <Activity className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-              Uji Sambungan MongoDB Atlas Baru
+              Konfigurasi MongoDB Server
             </h4>
             <div className="space-y-2">
               <div>
-                <FieldLabel htmlFor="mongo-connection-uri">Connection String (MONGODB_URI)</FieldLabel>
+                <FieldLabel htmlFor="mongo-connection-uri">MONGODB_URI (server-side only)</FieldLabel>
                 <input
                   id="mongo-connection-uri"
                   type="text"
                   placeholder="mongodb+srv://username:password@cluster.mongodb.net/..."
-                  value={customUri}
-                  onChange={(e) => setCustomUri(e.target.value)}
+                  value="Dikelola di Vercel"
+                  readOnly
+                  aria-readonly="true"
                   className="field field-mono"
                 />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div className="sm:w-1/2">
-                  <FieldLabel htmlFor="mongo-db-name">Nama Database</FieldLabel>
+                  <FieldLabel htmlFor="mongo-db-name">MONGODB_DB_NAME</FieldLabel>
                   <input
                     id="mongo-db-name"
                     type="text"
                     placeholder="Nama Database (default: bigdata_tp1)"
-                    value={dbName}
-                    onChange={(e) => setDbName(e.target.value)}
+                    value="bigdata_tp1"
+                    readOnly
+                    aria-readonly="true"
                     className="field field-mono"
                   />
                 </div>
                 <button
                   type="button"
-                  onClick={handleTestConnect}
-                  disabled={isConnecting}
+                  onClick={onRefreshStatus}
                   className="btn btn-primary sm:flex-1"
                 >
                   <Activity className="h-3.5 w-3.5" />
-                  {isConnecting ? "Menghubungkan..." : "Tes & Hubungkan"}
+                  Cek Status Server
                 </button>
               </div>
             </div>
@@ -335,17 +425,18 @@ export function MongoModal({
                 className="btn !border-code-line !bg-transparent !px-2 !py-1 font-mono !text-[11px] !text-code-muted hover:!text-code-ink"
               >
                 {copiedKey ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copiedKey ? "Tersalin" : "Salin Contoh"}
+                {copiedKey ? "Tersalin" : "Salin URI Contoh"}
               </button>
             </div>
             <div className="space-y-2 px-3 py-2.5">
               <pre className="overflow-x-auto font-mono text-[11.5px] leading-relaxed text-code-ink">
 {`MONGODB_URI="${sampleConnectionString}"
-MONGODB_DB_NAME="bigdata_tp1"`}
+MONGODB_DB_NAME="bigdata_tp1"
+APP_ACCESS_PASSWORD="<minimal-32-karakter>"`}
               </pre>
               <p className="font-sans text-[11px] leading-relaxed text-code-muted">
                 Di Vercel: Masuk ke <strong className="text-code-ink">Settings &rarr; Environment Variables</strong>,
-                tambahkan <code className="text-code-ink">MONGODB_URI</code> dengan URI dari MongoDB Atlas Anda.
+                tambahkan tiga variable di atas. Jangan tempel URI atau kata sandi di halaman aplikasi; koneksi MongoDB hanya dikonfigurasi di sisi server.
               </p>
             </div>
           </div>
@@ -353,7 +444,7 @@ MONGODB_DB_NAME="bigdata_tp1"`}
 
         {/* Footer */}
         <div className="flex shrink-0 justify-end border-t border-line px-5 py-3">
-          <button type="button" onClick={onClose} className="btn btn-outline">
+          <button type="button" onClick={handleClose} className="btn btn-outline">
             Tutup
           </button>
         </div>

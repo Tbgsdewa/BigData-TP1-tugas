@@ -134,6 +134,8 @@ export default function App() {
   // MongoDB Integration State
   const [mongoStatus, setMongoStatus] = useState<MongoStatus | null>(null);
   const [isMongoModalOpen, setIsMongoModalOpen] = useState<boolean>(false);
+  const [databaseAccessConfigured, setDatabaseAccessConfigured] = useState(false);
+  const [isDatabaseAuthenticated, setIsDatabaseAuthenticated] = useState(false);
   const [autoSync, setAutoSync] = useState<boolean>(() => {
     try {
       return localStorage.getItem("tp1_mongo_autosync") === "true";
@@ -157,15 +159,33 @@ export default function App() {
     return () => clearInterval(interval);
   }, [refreshMongoStatus]);
 
+  useEffect(() => {
+    let active = true;
+    mongoService
+      .getAuthStatus()
+      .then((auth) => {
+        if (!active) return;
+        setDatabaseAccessConfigured(auth.configured);
+        setIsDatabaseAuthenticated(auth.authenticated);
+      })
+      .catch((error) => {
+        console.error("Gagal membaca status akses database", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Auto-sync state changes to MongoDB
   useEffect(() => {
-    if (autoSync && !state.sampleMode) {
+    if (autoSync && isDatabaseAuthenticated && !state.sampleMode) {
       const timer = setTimeout(() => {
         mongoService.saveState(state, "default_tp1").catch(() => {});
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [state, autoSync]);
+  }, [state, autoSync, isDatabaseAuthenticated]);
 
   const handleToggleAutoSync = (enabled: boolean) => {
     setAutoSync(enabled);
@@ -901,6 +921,9 @@ export default function App() {
         onClose={() => setIsMongoModalOpen(false)}
         status={mongoStatus}
         onRefreshStatus={refreshMongoStatus}
+        accessConfigured={databaseAccessConfigured}
+        isAuthenticated={isDatabaseAuthenticated}
+        onAuthChange={setIsDatabaseAuthenticated}
         currentState={state}
         onStateRestored={handleStateRestored}
         autoSync={autoSync}
