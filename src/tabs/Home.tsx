@@ -46,7 +46,7 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
   // Tindakan nyata yang masih tertunda — urutan prioritas alur kerja
   const pending: Array<{ text: string; tab: Parameters<typeof onNavigate>[0]; cta: string }> = [];
   if (membersReady === 0) {
-    pending.push({ text: "Isi identitas anggota kelompok (nama + NIM) — NIM pertama menggantikan <NIM> di seluruh path HDFS.", tab: "Setup", cta: "Buka Setup" });
+    pending.push({ text: "Isi identitas anggota kelompok (nama + NIM). NIM pertama menggantikan <NIM> di seluruh path HDFS.", tab: "Setup", cta: "Buka Setup" });
   }
   if (prereqDone < 3) {
     pending.push({ text: `Verifikasi prasyarat host (${prereqDone}/3 tercentang).`, tab: "Setup", cta: "Buka Setup" });
@@ -67,13 +67,13 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
     pending.push({ text: `Bersihkan ${gate.credentialLeakCount} pola kredensial rahasia dari teks log/laporan.`, tab: "Monitor", cta: "Periksa Log" });
   }
   if (isiCount > 0) {
-    pending.push({ text: `Ganti ${isiCount} placeholder "[ISI]" yang masih tersisa pada formulir/disclosure.`, tab: "Disclosure", cta: "Buka Disclosure" });
+    pending.push({ text: `Ganti ${isiCount} penanda contoh yang masih tersisa pada formulir disclosure.`, tab: "Disclosure", cta: "Buka Disclosure" });
   }
   if (videoDone < 4) {
     pending.push({ text: `Selesaikan checklist standar mutu rekaman video (${videoDone}/4).`, tab: "Video", cta: "Buka Video" });
   }
   if (!gate.canExport && pending.length === 0) {
-    pending.push({ text: state.sampleMode ? "Mode Contoh aktif — kembali ke data asli untuk membuka gerbang ekspor." : "Periksa gerbang ekspor laporan.", tab: "Report", cta: "Buka Laporan" });
+    pending.push({ text: state.sampleMode ? "Mode Contoh aktif. Kembali ke data asli untuk membuka gerbang ekspor." : "Periksa gerbang ekspor laporan.", tab: "Report", cta: "Buka Laporan" });
   }
 
   const peta: Array<{ no: string; label: string; status: React.ReactNode; tab: Parameters<typeof onNavigate>[0] }> = [
@@ -84,7 +84,7 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
     { no: "5", label: "Bukti E01–E16", status: <MeterInline done={gate.evidenceCompleted === gate.totalEvidence} text={`${gate.evidenceCompleted}/${gate.totalEvidence} bukti lengkap`} />, tab: "Evidence" },
     { no: "6", label: "Laporan & Ekspor", status: gate.canExport ? <Chip tone="ok">Gerbang terbuka</Chip> : <Chip tone={state.sampleMode ? "warn" : "neutral"}>Terkunci · {gate.reasons.length} syarat tersisa</Chip>, tab: "Report" },
     { no: "7", label: "Video Walkthrough", status: <MeterInline done={videoDone === 4} text={`Checklist mutu ${videoDone}/4`} />, tab: "Video" },
-    { no: "8", label: "AI Disclosure", status: state.noAiUsage ? <Chip tone="ok">Deklarasi non-AI</Chip> : <MeterInline done={isiCount === 0} text={isiCount > 0 ? `${isiCount} placeholder [ISI] tersisa` : "Disclosure terisi"} />, tab: "Disclosure" },
+    { no: "8", label: "AI Disclosure", status: state.noAiUsage ? <Chip tone="ok">Deklarasi non-AI</Chip> : <MeterInline done={isiCount === 0} text={isiCount > 0 ? `${isiCount} penanda contoh tersisa` : "Tidak ada penanda contoh"} />, tab: "Disclosure" },
   ];
 
   return (
@@ -96,7 +96,7 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
         sub={
           <>
             Penyiapan, pemantauan, validasi, dan dokumentasi klaster Hadoop/Spark dalam satu alur periksa.
-            Semua angka di bawah dihitung dari state aplikasi — <strong className="text-ink-soft">bukan
+            Semua angka di bawah dihitung dari state aplikasi. <strong className="text-ink-soft">Angka ini bukan
             contoh, bukan karangan</strong>.
           </>
         }
@@ -155,7 +155,7 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" />
                 <p className="text-xs leading-relaxed text-ink-soft">
                   Tidak ada tindakan tertunda yang dapat dideteksi dari state. Gerbang ekspor{" "}
-                  {gate.canExport ? "terbuka — siapkan unggah ke LMS." : "masih terkunci; buka Laporan untuk melihat syaratnya."}
+                  {gate.canExport ? "terbuka. Siapkan unggah ke LMS." : "masih terkunci; buka Laporan untuk melihat syaratnya."}
                 </p>
               </div>
             ) : (
@@ -219,7 +219,7 @@ export const HomeTab: React.FC<HomeProps> = ({ state, mongoStatus, onNavigate, o
               <div className="space-y-3">
                 <p className="text-xs leading-relaxed text-ink-soft">
                   {mongoStatus === null
-                    ? "Status belum diterima dari server — kemungkinan backend belum berjalan atau MONGODB_URI belum dikonfigurasi. Kerja lokal (localStorage) tetap aman."
+                    ? "Status belum diterima dari server. Backend mungkin belum berjalan atau MONGODB_URI belum dikonfigurasi. Kerja lokal (localStorage) tetap aman."
                     : "MongoDB belum terhubung (standby). Aplikasi berjalan penuh dengan penyimpanan lokal browser; hubungkan Atlas untuk persistensi cloud."}
                 </p>
                 <EvidensCountNote state={state} />

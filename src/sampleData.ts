@@ -1,4 +1,14 @@
-import { AppState } from "./types";
+import { AppState, DisclosureRow } from "./types";
+
+export const normalizeDisclosureRows = (rows: DisclosureRow[]): DisclosureRow[] =>
+  rows.map((row) => ({
+    ...row,
+    tool: row.tool === "[ISI]" ? "" : row.tool,
+    tujuan: row.tujuan === "[ISI]" ? "" : row.tujuan,
+    diambil: row.diambil === "[ISI]" ? "" : row.diambil,
+    ditolak: row.ditolak === "[ISI]" ? "" : row.ditolak,
+    verifikasi: row.verifikasi === "[ISI]" ? "" : row.verifikasi,
+  }));
 
 export const SAMPLE_STATE: AppState = {
   sampleMode: true,
@@ -400,11 +410,11 @@ export const INITIAL_STATE: AppState = {
   disclosureRows: [
     {
       id: "d1",
-      tool: "[ISI]",
-      tujuan: "[ISI]",
-      diambil: "[ISI]",
-      ditolak: "[ISI]",
-      verifikasi: "[ISI]",
+      tool: "",
+      tujuan: "",
+      diambil: "",
+      ditolak: "",
+      verifikasi: "",
     },
   ],
   noAiUsage: false,

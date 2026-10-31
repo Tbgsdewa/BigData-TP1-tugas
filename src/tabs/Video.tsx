@@ -857,7 +857,7 @@ export const VideoTab: React.FC<VideoProps> = ({ state, onChange }) => {
                 </div>
                 <Chip tone="neutral">{member.porsi}</Chip>
                 <span className="font-mono text-[11px] text-ink-soft">
-                  {assignedSegIds.length > 0 ? assignedSegIds.join(" · ") : "—"}
+                  {assignedSegIds.length > 0 ? assignedSegIds.join(" · ") : "Belum ditentukan"}
                 </span>
                 <span className="font-mono text-[11px] tabular-nums">
                   <span className="text-ink-muted">{assignedCount} Segmen</span>{" "}

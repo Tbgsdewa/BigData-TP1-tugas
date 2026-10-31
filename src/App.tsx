@@ -22,7 +22,7 @@ import {
   X,
   LayoutDashboard,
 } from "lucide-react";
-import { INITIAL_STATE, SAMPLE_STATE } from "./sampleData";
+import { INITIAL_STATE, normalizeDisclosureRows, SAMPLE_STATE } from "./sampleData";
 import { AppState } from "./types";
 import { scanAllCredentials, findRemainingIsiPlaceholders } from "./scanner";
 import { checkExportGate } from "./export";
@@ -103,6 +103,9 @@ export default function App() {
           prerequisites: { ...INITIAL_STATE.prerequisites, ...parsed.prerequisites },
           monitorLogs: { ...INITIAL_STATE.monitorLogs, ...parsed.monitorLogs },
           videoChecklist: { ...INITIAL_STATE.videoChecklist, ...parsed.videoChecklist },
+          disclosureRows: normalizeDisclosureRows(
+            parsed.disclosureRows ?? INITIAL_STATE.disclosureRows
+          ),
           sampleMode: !!parsed.sampleMode,
         };
       }
@@ -274,7 +277,7 @@ export default function App() {
       Validation: gate.isValid ? (
         <span className="font-mono text-[10px] font-bold text-ok">VALID</span>
       ) : (
-        <span className="font-mono text-[10px] text-ink-muted">—</span>
+        <span className="font-mono text-[10px] text-ink-muted">Belum valid</span>
       ),
       Evidence: (
         <span
@@ -584,7 +587,8 @@ export default function App() {
               {state.members[0]?.nama?.trim() || "Operator belum terdaftar"}
             </p>
             <p className="truncate font-mono text-[10px] text-ink-muted">
-              {state.members[0]?.nim?.trim() || "NIM —"} · {state.members[0]?.porsi || "porsi —"}
+              {state.members[0]?.nim?.trim() || "NIM belum diisi"} ·{" "}
+              {state.members[0]?.porsi || "porsi belum dipilih"}
             </p>
           </div>
         </div>
@@ -623,7 +627,7 @@ export default function App() {
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
             <p className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-wider">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              Mode Contoh Aktif — ekspor terkunci sampai kembali ke data asli
+              Mode Contoh Aktif. Ekspor terkunci sampai kembali ke data asli.
             </p>
             <button
               onClick={handleToggleSampleMode}

@@ -147,7 +147,7 @@ export const MonitorTab: React.FC<MonitorProps> = ({ state, onChange }) => {
       >
         <p className="text-xs leading-relaxed text-ink-soft">
           Pilih satu sumber log pada tabel status di bawah untuk mempaste dan menguji teks mentah
-          terminal. Verdict dihitung langsung dari isi textarea — kosong berarti TIDAK TERBACA.
+          terminal. Verdict dihitung langsung dari isi textarea. Kolom kosong menghasilkan status TIDAK TERBACA.
         </p>
       </Panel>
 

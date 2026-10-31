@@ -8,7 +8,7 @@ interface DisclosureProps {
   onChange: (updater: (prev: AppState) => AppState) => void;
 }
 
-/** Kelas input/textarea sel disclosure; sel berisi [ISI] disorot token warn. */
+/** Kelas input/textarea sel disclosure; penanda contoh disorot sebagai peringatan. */
 const cellFieldClass = (hasIsi: boolean, mono = false) =>
   `w-full rounded-sm border bg-surface-2 px-2 py-1 text-xs text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:border-accent ${
     mono ? "font-mono " : ""
@@ -105,12 +105,12 @@ export const DisclosureTab: React.FC<DisclosureProps> = ({ state, onChange }) =>
         </div>
       </Panel>
 
-      {/* Warning on [ISI] */}
+      {/* Warning on sample markers */}
       {!state.noAiUsage && remainingIsiCount > 0 && (
         <div className="flex items-center gap-2 rounded-sm border border-warn/50 bg-warn-wash p-3.5 text-xs font-mono text-warn">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            Perhatian: {remainingIsiCount} placeholder [ISI] masih ada pada tabel disclosure. Ganti dengan
+            Perhatian: {remainingIsiCount} penanda contoh masih ada pada tabel disclosure. Ganti dengan
             rincian riil sebelum ekspor.
           </span>
         </div>

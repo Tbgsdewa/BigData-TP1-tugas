@@ -316,16 +316,16 @@ export const ReportTab: React.FC<ReportProps> = ({ state, onChange, onNavigateTo
     </div>,
     <div key="p5" className="flex flex-col justify-between gap-1 rounded-sm border border-line bg-surface px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <MicroLabel>5 · Placeholder Bebas</MicroLabel>
+        <MicroLabel>5 · Penanda Contoh</MicroLabel>
         <Chip tone={gateStatus.isiCount === 0 ? "ok" : "danger"}>
-          {gateStatus.isiCount === 0 ? "0 TERSISA" : `${gateStatus.isiCount} [ISI]`}
+          {gateStatus.isiCount === 0 ? "0 TERSISA" : `${gateStatus.isiCount} PENANDA`}
         </Chip>
       </div>
       <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className="text-ink-muted">
           {gateStatus.isiCount === 0
-            ? "Tidak ada placeholder [ISI] tersisa."
-            : "Masih ada placeholder pada form / disclosure."}
+            ? "Tidak ada penanda contoh tersisa."
+            : "Masih ada penanda contoh pada form disclosure."}
         </span>
         {onNavigateToTab && gateStatus.isiCount > 0 && (
           <button
@@ -412,7 +412,7 @@ export const ReportTab: React.FC<ReportProps> = ({ state, onChange, onNavigateTo
         }
         sub={
           gateStatus.canExport
-            ? "Keenam syarat terpenuhi: 15 langkah selesai, 16 bukti lengkap, komparasi WordCount VALID, nol temuan kredensial, tanpa placeholder [ISI]."
+            ? "Keenam syarat terpenuhi: 15 langkah selesai, 16 bukti lengkap, komparasi WordCount VALID, nol temuan kredensial, dan tidak ada penanda contoh."
             : "Ekspor terkunci sampai enam syarat di bawah terpenuhi."
         }
         actions={

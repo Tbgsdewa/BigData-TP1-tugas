@@ -466,7 +466,7 @@ Write-Host "✓ Struktur direktori klaster TP1 berhasil dibuat!" -ForegroundColo
                       </a>
                     ) : (
                       <span className="font-mono text-[11.5px] text-ink-muted" aria-label="Tidak ada Web UI">
-                        —
+                        Tidak tersedia
                       </span>
                     )}
                   </td>

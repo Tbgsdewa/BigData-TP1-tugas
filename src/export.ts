@@ -62,7 +62,7 @@ export function checkExportGate(state: AppState): ExportGateStatus {
   const isiFindings = findRemainingIsiPlaceholders(state);
   const isiCount = isiFindings.length;
   if (isiCount > 0) {
-    reasons.push(`Masih terdapat ${isiCount} placeholder "[ISI]" yang belum diisi pada form/disclosure.`);
+    reasons.push(`Masih terdapat ${isiCount} penanda contoh yang belum diganti pada form disclosure.`);
   }
 
   // 6. Scanner kredensial nol temuan
@@ -143,7 +143,7 @@ ${state.sampleMode ? "\n> ⚠️ **PERINGATAN: DOKUMEN INI DIBUAT DALAM MODE CON
 ### 1. JUDUL & IDENTITAS ANGGOTA
 - **Nama Berkas**: TP1_${safeNim}_${safeNama.replace(/\s+/g, "_")}.pdf
 - **Daftar Anggota Kelompok**:
-${state.members.map((m, idx) => `  ${idx + 1}. **${m.nama || "Nama Anggota"}** (NIM: \`${m.nim || "NIM"}\`) — Porsi: *${m.porsi}*`).join("\n")}
+${state.members.map((m, idx) => `  ${idx + 1}. **${m.nama || "Nama Anggota"}** (NIM: \`${m.nim || "NIM"}\`), porsi: *${m.porsi}*`).join("\n")}
 
 ---
 

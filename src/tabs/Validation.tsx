@@ -289,7 +289,7 @@ export const ValidationTab: React.FC<ValidationProps> = ({ state, onChange }) =>
             {cmpResult.differences.map((diff, idx) => (
               <li key={idx} className="flex gap-2">
                 <span aria-hidden="true" className="text-danger">
-                  —
+                  •
                 </span>
                 <span className="font-mono">
                   <strong className="font-bold text-danger">{diff.word}</strong>: {diff.diffExplanation}
